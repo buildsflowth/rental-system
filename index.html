@@ -1,0 +1,2307 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ระบบจัดการห้องเช่า</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%238B6A4E'/%3E%3Cpath d='M5 11.5 12 6l7 5.5M7 10.5V18h10v-7.5' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#8B6A4E">
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FAF6EF; --egg:#F6EEDF; --beige:#EDE2CF; --beige-2:#DFCDAF; --brown:#8B6A4E; --brown-d:#6B4E38; --brown-dd:#3F2E22;
+  --text:#3B2D23; --muted:#8E7D6D; --line:#ECE2D2; --white:#FFFFFF;
+  --ok:#5F7D4E; --ok-bg:#E9EFE1; --warn:#A87628; --warn-bg:#F8ECD6; --bad:#A94F43; --bad-bg:#F6E2DD; --info:#6C7C92; --info-bg:#E8ECF1;
+  --r:16px; --r-sm:10px;
+  --sh:0 1px 2px rgba(80,55,30,.05),0 6px 20px rgba(80,55,30,.06);
+  --side:256px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'IBM Plex Sans Thai',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--brown-d)}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.sm{font-size:13px}.xs{font-size:12px}.muted{color:var(--muted)}.r{text-align:right}.b{font-weight:600}
+.hide{display:none!important}
+
+/* ---------- layout ---------- */
+.sidebar{position:fixed;inset:0 auto 0 0;width:var(--side);background:var(--white);border-right:1px solid var(--line);display:flex;flex-direction:column;z-index:50;transition:transform .25s ease}
+.brand{display:flex;align-items:center;gap:12px;padding:22px 20px 18px;border-bottom:1px solid var(--line)}
+.logo{width:42px;height:42px;border-radius:12px;background:var(--brown);color:#fff;display:grid;place-items:center;flex:none}
+.logo svg.i{width:22px;height:22px}
+.brand-txt{min-width:0;flex:1}
+.brand-name{font-weight:600;font-size:16px;line-height:1.3;word-break:break-word}
+.brand-edit{border:0;background:none;color:var(--muted);font-size:12px;padding:0;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.brand-edit svg.i{width:13px;height:13px}
+.brand-edit:hover{color:var(--brown)}
+.nav{padding:12px;overflow-y:auto;flex:1}
+.nav-sec{font-size:11px;letter-spacing:.06em;color:var(--muted);padding:14px 12px 6px;text-transform:uppercase}
+.nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;color:var(--text);text-decoration:none;cursor:pointer;margin-bottom:2px}
+.nav a:hover{background:var(--egg)}
+.nav a.active{background:var(--beige);color:var(--brown-dd);font-weight:600}
+.nav a.active svg.i{color:var(--brown)}
+.nav .cnt{margin-left:auto;background:var(--bad);color:#fff;font-size:11px;border-radius:20px;padding:0 7px;line-height:18px}
+.side-foot{padding:14px 20px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.overlay{position:fixed;inset:0;background:rgba(40,28,18,.35);z-index:45;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.show{opacity:1;pointer-events:auto}
+main{margin-left:var(--side);min-height:100vh;padding-bottom:40px}
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;gap:12px;padding:14px 32px;background:rgba(250,246,239,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar h1{font-size:20px;font-weight:600;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hamb{display:none}
+#view{padding:26px 32px;max-width:1240px}
+.demo-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:16px 32px 0;max-width:1176px;background:var(--warn-bg);color:var(--warn);border-radius:12px;padding:10px 14px;font-size:13px}
+.bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--white);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+.bottom-nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);text-decoration:none;padding:6px 0;border-radius:10px;cursor:pointer}
+.bottom-nav a.active{color:var(--brown-d);font-weight:600}
+.bottom-nav a.active svg.i{color:var(--brown)}
+
+@media (max-width:1023px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.15)}
+  main{margin-left:0}
+  .hamb{display:inline-flex}
+  .topbar{padding:12px 20px}
+  #view{padding:20px}
+  .demo-banner{margin:14px 20px 0}
+}
+@media (max-width:767px){
+  .bottom-nav{display:flex}
+  main{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  .topbar{padding:10px 16px}
+  .topbar h1{font-size:18px}
+  #view{padding:16px}
+  .demo-banner{margin:12px 16px 0}
+}
+
+/* ---------- components ---------- */
+.card{background:var(--white);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:20px}
+.card h3,.sec-title{margin:0 0 14px;font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
+.sec-title .grow{flex:1}
+.stack>*+*{margin-top:18px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.auto{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+@media (max-width:1100px){.g2{grid-template-columns:1fr}}
+@media (max-width:1023px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:767px){.auto{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}}
+
+.stat{padding:18px 20px}
+.stat .lbl{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.stat .lbl .dot{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:var(--egg);color:var(--brown)}
+.stat .lbl .dot svg.i{width:16px;height:16px}
+.stat .val{font-size:26px;font-weight:600;margin-top:8px;line-height:1.2;color:var(--brown-dd);font-variant-numeric:tabular-nums}
+.stat .sub{font-size:12px;color:var(--muted);margin-top:2px}
+@media (max-width:767px){.stat{padding:14px}.stat .val{font-size:20px}}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;border-radius:12px;padding:9px 16px;cursor:pointer;background:var(--white);border-color:var(--line);font-weight:500;white-space:nowrap;transition:background .15s,border-color .15s;min-height:40px;text-decoration:none;color:var(--text)}
+.btn:hover{background:var(--egg)}
+.btn svg.i{width:18px;height:18px}
+.btn-primary{background:var(--brown);border-color:var(--brown);color:#fff}
+.btn-primary:hover{background:var(--brown-d)}
+.btn-soft{background:var(--beige);border-color:var(--beige);color:var(--brown-dd)}
+.btn-soft:hover{background:var(--beige-2)}
+.btn-ok{background:var(--ok);border-color:var(--ok);color:#fff}.btn-ok:hover{filter:brightness(.95);background:var(--ok)}
+.btn-danger{color:var(--bad)}.btn-danger:hover{background:var(--bad-bg)}
+.btn-sm{padding:5px 11px;min-height:32px;font-size:13px;border-radius:10px}
+.btn-sm svg.i{width:15px;height:15px}
+.btn-icon{width:36px;height:36px;padding:0;border-radius:10px;border:1px solid transparent;background:none;display:inline-grid;place-items:center;cursor:pointer;color:var(--muted)}
+.btn-icon:hover{background:var(--egg);color:var(--brown-d)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn-block{width:100%}
+
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;border-radius:20px;padding:2px 10px;white-space:nowrap}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.b-ok{background:var(--ok-bg);color:var(--ok)}
+.b-warn{background:var(--warn-bg);color:var(--warn)}
+.b-bad{background:var(--bad-bg);color:var(--bad)}
+.b-info{background:var(--info-bg);color:var(--info)}
+.b-muted{background:var(--egg);color:var(--muted)}
+.b-brown{background:var(--beige);color:var(--brown-d)}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:18px}
+.toolbar .grow{flex:1}
+.search{position:relative;flex:1;min-width:180px;max-width:360px}
+.search svg.i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);width:18px;height:18px}
+.search input{padding-left:38px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--white);border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;white-space:nowrap}
+.chip.active{background:var(--brown);border-color:var(--brown);color:#fff}
+.chip .c{opacity:.7;margin-left:4px}
+
+input,select,textarea{width:100%;border:1px solid var(--beige-2);background:var(--white);border-radius:12px;padding:9px 12px;font-size:16px;outline:none;transition:border-color .15s,box-shadow .15s;min-height:42px}
+textarea{min-height:76px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--brown);box-shadow:0 0 0 3px rgba(139,106,78,.14)}
+input[readonly]{background:var(--egg)}
+.field{display:block}
+.field>span{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+.field>span .req{color:var(--bad)}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.form-grid.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.form-grid .full{grid-column:1/-1}
+@media (max-width:600px){.form-grid{grid-template-columns:1fr}.form-grid.c3{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}
+.month-nav{display:flex;align-items:center;gap:6px}
+.month-nav input{width:auto;min-width:150px}
+
+.list{display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .main{flex:1;min-width:0}
+.row .t{font-weight:600}
+.row .s{font-size:13px;color:var(--muted)}
+.row .amt{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.row .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.avatar{width:42px;height:42px;border-radius:12px;background:var(--egg);color:var(--brown-d);display:grid;place-items:center;font-weight:600;flex:none}
+@media (max-width:600px){.row{flex-wrap:wrap}.row .acts{width:100%;justify-content:flex-start;padding-left:56px}}
+
+.empty{text-align:center;padding:40px 16px;color:var(--muted)}
+.empty .ic{width:56px;height:56px;border-radius:18px;background:var(--egg);color:var(--brown);display:grid;place-items:center;margin:0 auto 12px}
+.empty .ic svg.i{width:26px;height:26px}
+
+/* room cards */
+.room-card{background:var(--white);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--sh);display:flex;flex-direction:column;gap:8px;position:relative}
+.room-card .top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.room-no{font-size:22px;font-weight:600;color:var(--brown-dd);line-height:1.1}
+.room-card .meta{font-size:13px;color:var(--muted)}
+.room-card .price{font-weight:600;font-variant-numeric:tabular-nums}
+.room-card .tn{font-size:14px;display:flex;align-items:center;gap:6px;min-height:22px}
+.room-card .acts{display:flex;gap:6px;margin-top:auto;padding-top:6px;flex-wrap:wrap}
+.room-card .acts .btn{flex:1}
+.room-card.st-occupied{border-top:4px solid var(--brown)}
+.room-card.st-vacant{border-top:4px solid var(--ok)}
+.room-card.st-reserved{border-top:4px solid var(--info)}
+.room-card.st-maintenance{border-top:4px solid var(--warn)}
+.room-card .bill-amt{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--brown-dd)}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px}
+.tile{border-radius:12px;padding:10px;cursor:pointer;border:1px solid var(--line);background:var(--white);text-align:left;transition:transform .1s}
+.tile:hover{transform:translateY(-1px)}
+.tile .no{font-weight:600;font-size:17px}
+.tile .nm{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.occupied{background:var(--egg);border-color:var(--beige-2)}
+.tile.vacant{background:var(--ok-bg);border-color:#D6E1C9}
+.tile.reserved{background:var(--info-bg);border-color:#D3DAE4}
+.tile.maintenance{background:var(--warn-bg);border-color:#EDD9B4}
+.tile .bd{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:4px;vertical-align:middle}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* bill form */
+.bill-info{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.bill-info>div{flex:1;min-width:100px;background:var(--egg);border-radius:12px;padding:10px 12px}
+.bill-info .k{font-size:12px;color:var(--muted)}
+.bill-info .v{font-weight:600}
+.meter{border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px}
+.meter-t{font-weight:600;font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.meter-t .sw{width:10px;height:10px;border-radius:3px}
+.meter-calc{font-size:13px;color:var(--muted);margin-top:8px;display:flex;justify-content:space-between;gap:8px}
+.meter-calc b{color:var(--text)}
+.sub-t{display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:14px;margin:18px 0 8px}
+.ex-row{display:grid;grid-template-columns:1fr 130px 36px;gap:8px;margin-bottom:8px;align-items:center}
+.bill-sum{background:var(--brown-dd);color:#fff;border-radius:14px;padding:14px 16px;margin-top:16px}
+.bill-sum .ln{display:flex;justify-content:space-between;font-size:13px;opacity:.85;padding:2px 0}
+.bill-sum .tt{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid rgba(255,255,255,.2);margin-top:8px;padding-top:8px;font-weight:600}
+.bill-sum .tt .v{font-size:24px}
+.warn-text{color:var(--bad);font-size:12px}
+
+/* table */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px}
+table.tbl{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+.tbl th{font-weight:500;color:var(--muted);font-size:12.5px;text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:10px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tfoot td{font-weight:600;border-top:2px solid var(--beige-2)}
+.tbl .r{text-align:right}
+
+/* chart */
+.chart svg{width:100%;height:auto;display:block}
+.chart-legend{display:flex;gap:16px;font-size:12.5px;color:var(--muted);margin-bottom:6px}
+.chart-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.hbar{margin-bottom:12px}
+.hbar .top{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:5px}
+.hbar .track{height:10px;background:var(--egg);border-radius:6px;overflow:hidden}
+.hbar .fill{height:100%;border-radius:6px;background:var(--brown)}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(40,28,18,.38)}
+.modal.show{display:flex}
+.modal-card{background:var(--white);border-radius:20px;width:100%;max-width:620px;max-height:calc(100vh - 40px);display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(40,28,18,.25);animation:pop .18s ease}
+.modal-card.lg{max-width:780px}
+.modal-card.sm{max-width:420px}
+.modal-head{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.modal-head h3{margin:0;font-size:17px;font-weight:600;flex:1}
+.modal-body{padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.modal-foot{display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--line);flex-wrap:wrap}
+.modal-foot:empty{display:none}
+@keyframes pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+@media (max-width:600px){
+  .modal{padding:0;align-items:flex-end}
+  .modal-card,.modal-card.lg,.modal-card.sm{max-width:none;border-radius:20px 20px 0 0;max-height:94vh}
+  .modal-foot{padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+  .modal-foot .btn{flex:1}
+}
+#confirmBox{z-index:120}
+
+.toast-wrap{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:var(--brown-dd);color:#fff;padding:10px 18px;border-radius:12px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.18);animation:pop .2s ease}
+.toast.bad{background:var(--bad)}
+@media (max-width:767px){.toast-wrap{bottom:calc(90px + env(safe-area-inset-bottom))}}
+.loadbar{position:fixed;top:0;left:0;right:0;height:3px;z-index:300;overflow:hidden;display:none}
+.loadbar.show{display:block}
+.loadbar::after{content:"";position:absolute;height:100%;width:40%;background:var(--brown);animation:lb 1s infinite ease-in-out}
+@keyframes lb{from{left:-40%}to{left:100%}}
+
+.splash{position:fixed;inset:0;background:var(--bg);z-index:400;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--muted)}
+.splash-err{max-width:420px;padding:0 20px;font-size:14px;color:var(--text);text-align:left}
+.splash-err ul{margin:8px 0;padding-left:20px;color:var(--muted)}
+.spinner{width:36px;height:36px;border:3px solid var(--beige);border-top-color:var(--brown);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lock{position:fixed;inset:0;background:var(--bg);z-index:350;display:none;align-items:center;justify-content:center;padding:20px}
+.lock.show{display:flex}
+.lock .card{max-width:360px;width:100%;text-align:center}
+.lock input{text-align:center;font-size:22px;letter-spacing:.4em;margin:14px 0}
+
+/* QR / payment */
+.qr-box{border:2px dashed var(--beige-2);border-radius:16px;padding:16px;text-align:center;background:var(--egg)}
+.qr-box img{max-width:220px;width:100%;border-radius:10px;background:#fff;display:block;margin:0 auto 12px}
+.pay-preview{display:flex;gap:16px;align-items:center;background:var(--egg);border-radius:14px;padding:14px}
+.pay-preview img{width:110px;height:110px;object-fit:contain;background:#fff;border-radius:10px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px}
+.kv .k{color:var(--muted)}
+
+/* invoice — A4 (794 x 1123 px = 210 x 297 mm @96dpi) */
+.modal-card.xl{max-width:900px}
+.inv-stage{position:relative;width:100%;overflow:hidden;background:var(--egg);border-radius:12px;padding:16px}
+.inv-scale{transform-origin:top left;width:794px}
+.invoice{width:794px;min-height:1123px;background:#fff;color:#2F241B;padding:40px 56px 24px;font-size:14px;position:relative;display:flex;flex-direction:column;box-shadow:0 2px 14px rgba(60,40,20,.12);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.inv-top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding-bottom:18px;border-bottom:2px solid var(--brown)}
+.inv-org{display:flex;gap:14px;align-items:flex-start}
+.inv-logo{width:50px;height:50px;border-radius:12px;background:var(--brown);color:#fff;display:grid;place-items:center;flex:none}
+.inv-logo svg.i{width:26px;height:26px}
+.inv-brand{font-size:22px;font-weight:700;color:var(--brown-dd);line-height:1.3}
+.inv-sub{font-size:12.5px;color:#7a6a5b;margin-top:2px;max-width:400px}
+.inv-doc{text-align:right;flex:none}
+.inv-type{font-size:26px;font-weight:700;color:var(--brown);line-height:1.2}
+.inv-type-en{font-size:11px;letter-spacing:.2em;color:#a08f7e;margin-top:2px}
+.inv-meta{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0 14px}
+.inv-box{background:var(--egg);border-radius:12px;padding:14px 18px}
+.inv-box .k{font-size:12px;color:#7a6a5b}
+.inv-box .v{font-size:19px;font-weight:600;color:var(--brown-dd)}
+.inv-kv{width:100%;font-size:13.5px;border-collapse:collapse}
+.inv-kv td{padding:2px 0}
+.inv-kv td:first-child{color:#7a6a5b}
+.inv-kv td:last-child{text-align:right;font-weight:600}
+.inv-tbl{width:100%;border-collapse:collapse}
+.inv-tbl th{background:var(--brown);color:#fff;font-weight:500;font-size:13px;padding:9px 12px;text-align:left}
+.inv-tbl th:first-child{border-radius:8px 0 0 8px;width:44px;text-align:center}
+.inv-tbl th:last-child{border-radius:0 8px 8px 0}
+.inv-tbl th.r,.inv-tbl td.r{text-align:right}
+.inv-tbl td{padding:10px 12px;border-bottom:1px solid #F0E8DA;vertical-align:top}
+.inv-tbl td:first-child{text-align:center;color:#a08f7e}
+.inv-tbl td.d{color:#7a6a5b;font-size:12.5px}
+.inv-tbl tr.sec td{background:#FBF6EC;font-weight:600;font-size:12.5px;color:var(--brown-d);padding:6px 12px}
+.inv-total{display:flex;justify-content:space-between;align-items:center;background:var(--brown-dd);color:#fff;border-radius:10px;padding:12px 18px;margin-top:12px}
+.inv-total .v{font-size:24px;font-weight:700}
+.inv-words{text-align:right;font-size:13px;color:#7a6a5b;margin-top:6px}
+.inv-pay{display:flex;gap:20px;align-items:center;margin-top:22px;border:1px solid var(--beige-2);border-radius:12px;padding:16px 18px}
+.inv-pay img{width:150px;height:150px;object-fit:contain;background:#fff;border-radius:8px;flex:none}
+.inv-pay .ttl{font-weight:600;color:var(--brown-d);margin-bottom:6px}
+.inv-note{margin-top:16px;font-size:13px;color:#7a6a5b}
+.inv-sign{display:grid;grid-template-columns:1fr 1fr;gap:80px;margin-top:auto;padding-top:26px;text-align:center;font-size:13px;color:#5b4a3c}
+.inv-sign .line{border-bottom:1px dotted #a08f7e;height:44px;margin-bottom:6px}
+.inv-sign small{color:#a08f7e}
+.inv-foot{text-align:center;font-size:11px;color:#a08f7e;margin-top:14px;border-top:1px solid #F0E8DA;padding-top:10px}
+.stamp{margin-right:30px;transform:rotate(-10deg);border:3px solid var(--ok);color:var(--ok);font-weight:700;font-size:24px;padding:6px 18px;border-radius:10px;opacity:.85;background:rgba(255,255,255,.75);text-align:center;line-height:1.2}
+.stamp small{display:block;font-size:12px;font-weight:500}
+.seg{display:inline-flex;background:var(--egg);border-radius:10px;padding:3px;margin-left:auto}
+.seg input{display:none}
+.seg span{display:block;padding:4px 12px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500;color:var(--muted)}
+.seg input:checked+span{background:#fff;color:var(--brown-dd);box-shadow:0 1px 3px rgba(80,55,30,.15)}
+.extra-box{border-color:var(--beige-2);background:#FFFCF7}
+.ph-wrap{margin-top:12px}
+.ph-add{display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--beige-2);border-radius:12px;padding:12px;color:var(--brown-d);font-size:14px;cursor:pointer;background:var(--egg);min-height:56px}
+.ph-add:hover{border-color:var(--brown)}
+.ph{position:relative;display:inline-block;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--egg)}
+.ph img{display:block;width:180px;height:130px;object-fit:cover;cursor:zoom-in}
+.ph .ph-del{position:absolute;top:6px;right:6px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(40,28,18,.65);color:#fff;display:grid;place-items:center;cursor:pointer}
+.ph .ph-del svg.i{width:16px;height:16px}
+.ph .ph-cap{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.55));color:#fff;font-size:12px;padding:14px 8px 5px}
+img.ph-missing{opacity:.3}
+.lightbox{position:fixed;inset:0;z-index:160;background:rgba(20,14,9,.88);display:none;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px))}
+.lightbox.show{display:flex}
+.lightbox img{max-width:100%;max-height:100%;border-radius:10px}
+.lightbox .btn-icon{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;color:#fff;background:rgba(255,255,255,.12)}
+.inv-row{display:flex;gap:14px;margin-top:20px;align-items:stretch}
+.inv-row .inv-pay{margin-top:0;flex:1;min-width:0}
+.inv-row.has-ph .inv-pay{gap:14px;padding:14px}
+.inv-row.has-ph .inv-pay img{width:128px;height:128px}
+.inv-row.has-ph .stamp{margin-right:6px;font-size:20px}
+.inv-photos{display:flex;gap:10px;align-items:flex-start;flex:none}
+.inv-photos figure{margin:0}
+.inv-photos img{display:block;width:138px;height:122px;object-fit:cover;border-radius:8px;border:1px solid #E8DDCB;background:#F3EDE3;cursor:zoom-in}
+.inv-photos figcaption{font-size:12px;color:#7a6a5b;margin-top:4px}
+.inv-photos .ttl{font-weight:600;color:var(--brown-d);font-size:13px;width:100%}
+.sig-box{border:1px dashed var(--beige-2);border-radius:14px;background:#fff;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;gap:4px}
+.sig-box img{max-height:90px;max-width:260px;object-fit:contain}
+.sig-box .sig-name{font-size:12.5px;color:var(--muted);border-top:1px dotted var(--beige-2);padding-top:4px;min-width:180px;text-align:center}
+.pad-wrap{position:relative;border:1px solid var(--beige-2);border-radius:14px;background:#fff;overflow:hidden}
+.pad-wrap canvas{display:block;touch-action:none;cursor:crosshair;position:relative;z-index:1}
+.pad-line{position:absolute;left:24px;right:24px;bottom:52px;border-bottom:1.5px dashed var(--beige-2)}
+.pad-x{position:absolute;left:26px;bottom:56px;color:var(--beige-2);font-size:16px}
+.pad-wrap.used .pad-x{opacity:.4}
+.pen{width:26px;height:26px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px var(--beige-2);cursor:pointer;padding:0}
+.pen.on{box-shadow:0 0 0 2px var(--brown)}
+.inv-sign .line{height:58px;display:flex;align-items:flex-end;justify-content:center}
+.inv-sign .sig-img{max-height:64px;max-width:220px;object-fit:contain;margin-bottom:-4px}
+.extra-box .chip{font-size:12.5px;padding:4px 11px}
+
+.welcome{background:linear-gradient(135deg,var(--brown) 0%,var(--brown-d) 100%);color:#fff;border:0}
+.welcome h2{margin:0 0 4px;font-size:20px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:16px}
+.steps button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:12px;padding:12px;text-align:left;cursor:pointer}
+.steps button:hover{background:rgba(255,255,255,.2)}
+.steps b{display:block}
+
+@page{size:A4;margin:0}
+@media print{
+  html,body{background:#fff!important}
+  body *{visibility:hidden}
+  #invoice,#invoice *{visibility:visible}
+  .inv-scale{transform:none!important}
+  .modal,.modal-card{background:none!important;box-shadow:none!important;animation:none!important}
+  #invoice{position:fixed;left:0;top:0;width:210mm;min-height:0;height:297mm;box-shadow:none;padding:10mm 15mm 6mm;overflow:hidden}
+}
+</style>
+</head>
+<body>
+<div class="loadbar" id="loadbar"></div>
+<div class="splash" id="splash"><div class="spinner" id="splashSpin"></div><div id="splashMsg">กำลังโหลดข้อมูล…</div><div id="splashErr" class="splash-err hide"></div></div>
+<script>
+/* ตัวกันค้าง (เขียนแบบ ES5 ให้ทำงานได้แม้เบราว์เซอร์เก่า): ถ้าโหลดไม่สำเร็จ จะแสดงสาเหตุและปุ่มลองใหม่ แทนการหมุนค้าง */
+(function(){
+  function show(reason){
+    var sp = document.getElementById('splash'); if(!sp || /\bhide\b/.test(sp.className)) return;
+    document.getElementById('splashSpin').style.display = 'none';
+    document.getElementById('splashMsg').innerHTML = '<b>โหลดข้อมูลไม่สำเร็จ</b>';
+    var box = document.getElementById('splashErr'); box.className = 'splash-err';
+    box.innerHTML = '<div>' + reason + '</div>' +
+      '<ul><li>ลองเปิดลิงก์ด้วย Chrome หรือ Safari (แทนเบราว์เซอร์ในแอป LINE/Facebook)</li>' +
+      '<li>อัปเดตเบราว์เซอร์ / ระบบปฏิบัติการให้เป็นเวอร์ชันล่าสุด</li>' +
+      '<li>เวอร์ชันติดตั้งบน Google: ตรวจว่า Deploy เป็นเวอร์ชันล่าสุด และกดอนุญาตสิทธิ์แล้ว</li></ul>' +
+      '<button onclick="location.reload()" style="margin-top:6px;padding:9px 18px;border-radius:12px;border:0;background:#8B6A4E;color:#fff;font:inherit;cursor:pointer">ลองใหม่อีกครั้ง</button>';
+  }
+  window.__loadFail = show;
+  window.addEventListener('error', function(e){
+    var msg = (e && e.message) ? String(e.message) : 'สคริปต์ทำงานผิดพลาด';
+    setTimeout(function(){ show('ข้อผิดพลาด: ' + msg.replace(/[<>&]/g, '')); }, 300);
+  });
+  setTimeout(function(){ show('ใช้เวลาโหลดนานผิดปกติ (เกิน 25 วินาที) อาจเป็นเพราะอินเทอร์เน็ตช้าหรือเบราว์เซอร์ไม่รองรับ'); }, 25000);
+})();
+</script>
+
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="logo"><svg class="i" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg></div>
+    <div class="brand-txt">
+      <div class="brand-name" id="brandName">ระบบจัดการห้องเช่า</div>
+      <button class="brand-edit" onclick="editSystemName()"><svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>เปลี่ยนชื่อระบบ</button>
+    </div>
+  </div>
+  <nav class="nav" id="nav"></nav>
+  <div class="side-foot" id="sideFoot"></div>
+</aside>
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+
+<main>
+  <header class="topbar">
+    <button class="btn-icon hamb" onclick="openDrawer()" aria-label="เมนู"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <h1 id="pageTitle">ภาพรวม</h1>
+    <button class="btn-icon" onclick="reload()" title="โหลดข้อมูลใหม่" aria-label="โหลดข้อมูลใหม่"><svg class="i" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3.9L4 9"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14.9 3.9L20 15"/><path d="M20 20v-5h-5"/></svg></button>
+  </header>
+  <div id="demoBanner" class="demo-banner hide"><div style="flex:1;min-width:200px"><b>เวอร์ชันทดลองใช้</b> — ข้อมูลทั้งหมดเป็นตัวอย่าง ลองกดเพิ่ม แก้ไข ออกบิลได้ทุกเมนู (ข้อมูลเก็บในเครื่องของคุณเท่านั้น)</div><button class="btn btn-sm" onclick="resetDemo()">เริ่มข้อมูลตัวอย่างใหม่</button></div>
+  <section id="view"></section>
+</main>
+
+<nav class="bottom-nav" id="bottomNav"></nav>
+
+<div class="modal" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-card" id="modalCard">
+    <div class="modal-head"><h3 id="modalTitle"></h3><button class="btn-icon" onclick="closeModal()" aria-label="ปิด"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+<div class="modal" id="confirmBox">
+  <div class="modal-card sm">
+    <div class="modal-head"><h3 id="cfTitle">ยืนยัน</h3></div>
+    <div class="modal-body" id="cfBody"></div>
+    <div class="modal-foot"><button class="btn" id="cfNo">ยกเลิก</button><button class="btn btn-primary" id="cfYes">ยืนยัน</button></div>
+  </div>
+</div>
+<div class="lock" id="lock">
+  <div class="card">
+    <div class="logo" style="margin:0 auto 10px"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+    <h3 style="justify-content:center;margin:0" id="lockName">ระบบจัดการห้องเช่า</h3>
+    <div class="muted sm">กรุณาใส่รหัส PIN เพื่อเข้าใช้งาน</div>
+    <input id="pinInput" type="password" inputmode="numeric" autocomplete="off" onkeydown="if(event.key==='Enter')unlock()">
+    <button class="btn btn-primary btn-block" onclick="unlock()">เข้าสู่ระบบ</button>
+  </div>
+</div>
+<div class="lightbox" id="lightbox" onclick="closePhoto()"><img id="lightboxImg" alt="รูปมิเตอร์"><button class="btn-icon" aria-label="ปิด"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+/* =========================================================
+   ICONS
+   ========================================================= */
+const IC = {
+  home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+  receipt:'<path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+  door:'<path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/>',
+  chart:'<path d="M3 3v18h18"/><path d="M8 17v-6M13 17V7M18 17V9"/>',
+  history:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+  wallet:'<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 3h10"/><circle cx="16.5" cy="15" r="1"/>',
+  coins:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>',
+  tool:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  settings:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+  menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>',
+  trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  print:'<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>',
+  left:'<path d="m15 18-6-6 6-6"/>', right:'<path d="m9 18 6-6-6-6"/>',
+  phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+  out:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+  download:'<path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  alert:'<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h0"/>',
+  calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  refresh:'<path d="M20 11a8 8 0 0 0-14.9-3.9L4 9"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14.9 3.9L20 15"/><path d="M20 20v-5h-5"/>',
+  share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  camera:'<path d="M4 8h3l2-3h6l2 3h3v12H4z"/><circle cx="12" cy="13" r="3.5"/>'
+};
+const ic = (k, extra='') => `<svg class="i" viewBox="0 0 24 24" ${extra}>${IC[k]||''}</svg>`;
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const n = v => { const x = parseFloat(String(v==null?'':v).replace(/,/g,'')); return isNaN(x) ? 0 : x; };
+const fmt = v => n(v).toLocaleString('th-TH', {maximumFractionDigits:2});
+const baht = v => '฿' + fmt(v);
+const pad = x => String(x).padStart(2,'0');
+const todayStr = () => { const d = new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
+const thisMonth = () => todayStr().slice(0,7);
+const addMonth = (m,k) => { let [y,mo] = m.split('-').map(Number); mo += k; while(mo>12){mo-=12;y++} while(mo<1){mo+=12;y--} return y+'-'+pad(mo); };
+const TH_M = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const TH_MS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const monthTH = m => { if(!m) return '-'; const [y,mo] = String(m).split('-').map(Number); return mo ? TH_M[mo-1]+' '+(y+543) : m; };
+const monthShortTH = m => { if(!m) return '-'; const [y,mo] = String(m).split('-').map(Number); return mo ? TH_MS[mo-1]+' '+String(y+543).slice(-2) : m; };
+const dateTH = d => { if(!d) return '-'; const [y,m,dd] = String(d).slice(0,10).split('-').map(Number); return m ? dd+' '+TH_MS[m-1]+' '+(y+543) : d; };
+const daysUntil = d => Math.round((new Date(d+'T00:00:00') - new Date(todayStr()+'T00:00:00'))/864e5);
+const sum = (arr, f) => arr.reduce((s,x) => s + n(typeof f==='function' ? f(x) : x[f]), 0);
+const initials = s => String(s||'?').trim().slice(0,1);
+const field = (label, input, cls='') => `<label class="field ${cls}"><span>${label}</span>${input}</label>`;
+const numIn = (name, val, extra='') => `<input name="${name}" type="number" inputmode="decimal" step="any" value="${esc(val)}" ${extra}>`;
+const txtIn = (name, val, extra='') => `<input name="${name}" value="${esc(val)}" ${extra}>`;
+const opts = (list, sel) => list.map(o => { const [v,l] = Array.isArray(o)?o:[o,o]; return `<option value="${esc(v)}" ${String(v)===String(sel)?'selected':''}>${esc(l)}</option>`; }).join('');
+function formObj(form){ const o = {}; Array.from(form.elements).forEach(el => { if(el.type === 'radio' && !el.checked) return; if(el.name) o[el.name] =el.type==='checkbox' ? el.checked : String(el.value).trim(); }); return o; }
+function parseExtras(x){ if(Array.isArray(x)) return x; try{ const a = JSON.parse(x||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function shortNum(v){ v = n(v); if(Math.abs(v)>=1e6) return (v/1e6).toFixed(1).replace(/\.0$/,'')+'M'; if(Math.abs(v)>=1e3) return (v/1e3).toFixed(1).replace(/\.0$/,'')+'k'; return String(Math.round(v)); }
+function bahtText(num){
+  num = Math.round(n(num)*100)/100;
+  const neg = num < 0; num = Math.abs(num);
+  const D = ['ศูนย์','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'], U = ['','สิบ','ร้อย','พัน','หมื่น','แสน'];
+  function conv(s){
+    s = String(s).replace(/^0+/,''); if(!s) return '';
+    if(s.length > 6) return conv(s.slice(0,-6)) + 'ล้าน' + conv(s.slice(-6));
+    let out = ''; const L = s.length;
+    for(let i=0;i<L;i++){ const d = +s[i], p = L-i-1; if(!d) continue;
+      if(p===1 && d===1) out += 'สิบ'; else if(p===1 && d===2) out += 'ยี่สิบ';
+      else if(p===0 && d===1 && L>1) out += 'เอ็ด'; else out += D[d] + U[p]; }
+    return out;
+  }
+  const b = Math.floor(num), st = Math.round((num-b)*100);
+  let t = (b ? conv(String(b)) : 'ศูนย์') + 'บาท' + (st ? conv(String(st)) + 'สตางค์' : 'ถ้วน');
+  return (neg?'ลบ':'') + t;
+}
+
+/* =========================================================
+   API (Google Apps Script หรือ โหมดทดลองใน localStorage)
+   ========================================================= */
+const IS_GAS = !!(window.google && google.script && google.script.run);
+const SUPA_CFG = window.SUPABASE_CONFIG || null;          // มีไฟล์ config.js = เวอร์ชัน GitHub + Supabase
+const IS_SUPA = !IS_GAS && !!(SUPA_CFG && SUPA_CFG.url && SUPA_CFG.key);
+const LIVE = IS_GAS || IS_SUPA;                           // ใช้งานจริง (ไม่ใช่โหมดทดลอง)
+const HOSTED = !!window.DEMO_HOSTED;   // เว็บเดโมออนไลน์: ไม่มีการพิมพ์/ดาวน์โหลดไฟล์
+let PIN = '';
+try { PIN = sessionStorage.getItem('rent_pin') || ''; } catch(e){}
+
+function api(fn, ...args){
+  args.unshift(PIN);
+  if(IS_GAS){
+    return new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej)['api'+fn](...args));
+  }
+  if(IS_SUPA) return Supa['api'+fn](...args);
+  return new Promise((res, rej) => setTimeout(() => { try { res(Mock['api'+fn](...args)); } catch(e){ rej(e); } }, 120));
+}
+let busyN = 0;
+function busy(on){ busyN += on ? 1 : -1; $('#loadbar').classList.toggle('show', busyN > 0); }
+async function call(fn, ...args){
+  busy(true);
+  try { return await api(fn, ...args); }
+  catch(e){
+    const msg = (e && e.message) || String(e);
+    if(msg.indexOf('LOCKED') > -1) showLock(); else toast('เกิดข้อผิดพลาด: ' + msg, 'bad');
+    throw e;
+  } finally { busy(false); }
+}
+
+/* ---------- Mock backend (โหมดทดลอง) ---------- */
+const Mock = (() => {
+  const K = 'rental_demo_v3';
+  const MAP = {Rooms:'rooms', Tenants:'tenants', Bills:'bills', Expenses:'expenses', Repairs:'repairs'};
+  let st = null;
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const id = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  function load(){ if(st) return; try { st = JSON.parse(localStorage.getItem(K)); } catch(e){} if(!st) { st = seed(); save(); } }
+  function save(){ try { localStorage.setItem(K, JSON.stringify(st)); } catch(e){ console.warn(e); } }
+  function pub(){ const s = Object.assign({}, st.settings); s.hasPin = !!s.pinHash; delete s.pinHash; return s; }
+  function auth(pin){ if(st.settings.pinHash && st.settings.pinHash !== pin) throw new Error('LOCKED'); }
+  function up(name, obj){
+    const arr = st[MAP[name]]; obj = Object.assign({}, obj);
+    const i = obj.id ? arr.findIndex(x => x.id === obj.id) : -1;
+    if(i > -1){ arr[i] = Object.assign({}, arr[i], obj); return clone(arr[i]); }
+    if(!obj.id) obj.id = id(); obj.createdAt = new Date().toISOString();
+    Object.keys(obj).forEach(k => { if(obj[k] && typeof obj[k] === 'object') obj[k] = JSON.stringify(obj[k]); });
+    arr.push(obj); return clone(obj);
+  }
+  // รูป QR ตัวอย่าง (ลายจำลอง ไม่ใช่ QR จริง) และลายเซ็นตัวอย่าง สำหรับโหมดทดลอง
+  function sampleQR(){
+    try { const N = 29, S = 8, c = document.createElement('canvas'); c.width = c.height = N*S + 32; const x = c.getContext('2d');
+      x.fillStyle = '#fff'; x.fillRect(0,0,c.width,c.height); x.fillStyle = '#1b1b1b'; let seed = 7;
+      const rnd = () => (seed = (seed*9301 + 49297) % 233280) / 233280;
+      const finder = (cx, cy) => { x.fillRect(16+cx*S,16+cy*S,7*S,7*S); x.fillStyle='#fff'; x.fillRect(16+(cx+1)*S,16+(cy+1)*S,5*S,5*S); x.fillStyle='#1b1b1b'; x.fillRect(16+(cx+2)*S,16+(cy+2)*S,3*S,3*S); };
+      for(let i=0;i<N;i++) for(let j=0;j<N;j++){ const inF = (i<8&&j<8)||(i>N-9&&j<8)||(i<8&&j>N-9); if(!inF && rnd() > .52) x.fillRect(16+i*S,16+j*S,S,S); }
+      finder(0,0); finder(N-7,0); finder(0,N-7);
+      x.fillStyle = '#fff'; x.fillRect(c.width/2-44, c.height/2-14, 88, 28); x.fillStyle = '#8B6A4E'; x.font = '600 15px sans-serif'; x.textAlign = 'center'; x.fillText('ตัวอย่าง', c.width/2, c.height/2+5);
+      return c.toDataURL('image/png'); } catch(e){ return ''; }
+  }
+  function sampleSign(){
+    try { const c = document.createElement('canvas'); c.width = 420; c.height = 140; const x = c.getContext('2d');
+      x.strokeStyle = '#1F2A5A'; x.lineWidth = 3.2; x.lineCap = x.lineJoin = 'round'; x.beginPath();
+      x.moveTo(30,95); x.bezierCurveTo(55,20,95,25,80,80); x.bezierCurveTo(70,115,120,105,135,70); x.bezierCurveTo(145,50,150,95,170,85);
+      x.bezierCurveTo(190,72,195,40,210,55); x.bezierCurveTo(222,70,215,100,240,90); x.bezierCurveTo(265,80,270,50,290,62);
+      x.bezierCurveTo(305,72,300,95,325,88); x.bezierCurveTo(350,80,360,60,390,58); x.stroke();
+      x.beginPath(); x.moveTo(60,112); x.bezierCurveTo(160,100,280,104,380,96); x.lineWidth = 2; x.stroke();
+      return c.toDataURL('image/png'); } catch(e){ return ''; }
+  }
+  function sampleMeter(kind, reading){
+    try { const c = document.createElement('canvas'); c.width = 480; c.height = 360; const x = c.getContext('2d');
+      const g = x.createLinearGradient(0,0,0,360); g.addColorStop(0,'#cfc8bb'); g.addColorStop(1,'#a79f92'); x.fillStyle = g; x.fillRect(0,0,480,360);
+      x.fillStyle = kind === 'water' ? '#2f5d8a' : '#3a3a3a'; x.beginPath(); x.roundRect ? x.roundRect(50,40,380,280,26) : x.rect(50,40,380,280); x.fill();
+      x.fillStyle = '#f4f1ea'; x.fillRect(80,70,320,60); x.fillStyle = '#333'; x.font = '600 20px sans-serif'; x.textAlign = 'center';
+      x.fillText(kind === 'water' ? 'WATER METER  m³' : 'ELECTRIC METER  kWh', 240, 108);
+      const digits = String(Math.round(reading)).padStart(6, '0');
+      x.fillStyle = '#111'; x.fillRect(90,160,300,80);
+      for(let i=0;i<6;i++){ x.fillStyle = i===5 ? '#b23b2e' : '#fafafa'; x.fillRect(100+i*48,170,40,60); x.fillStyle = i===5 ? '#fff' : '#111'; x.font = '700 42px monospace'; x.fillText(digits[i], 120+i*48, 216); }
+      x.fillStyle = '#f4f1ea'; x.font = '15px sans-serif'; x.fillText('ภาพตัวอย่าง', 240, 290);
+      return c.toDataURL('image/jpeg', .72); } catch(e){ return ''; }
+  }
+  function seed(){
+    const S = {systemName:'บ้านเช่าสวนชบา', ownerName:'สมใจ ใจดี', address:'99/9 ถนนตัวอย่าง ต.ในเมือง อ.เมือง จ.เชียงใหม่ 50000', phone:'081-234-5678',
+      bankName:'ธนาคารกสิกรไทย', accountName:'สมใจ ใจดี', accountNo:'123-4-56789-0', promptPay:'081-234-5678', qrImage:sampleQR(), signImage:sampleSign(), signMode:'all',
+      waterMode:'unit', waterFlat:'150', waterRate:'18', waterMin:'100', elecRate:'8', commonFee:'100', dueDay:'5', invoiceNote:'กรุณาชำระเงินภายในวันที่กำหนด ขอบคุณค่ะ', pinHash:''};
+    const rooms = [];
+    [1,2].forEach(f => [1,2,3,4].forEach(i => rooms.push({id:'r'+f+i, number:f+'0'+i, floor:String(f), type:f===1?'ห้องพัดลม':'ห้องแอร์', price:String(f===1?3000:4500), status:(f===2&&i===4)?'maintenance':'vacant', note:''})));
+    const names = ['สมชาย ใจดี','วิภา รักษ์ดี','กมล ทองดี','นภา ศรีสุข','ธนพล มั่นคง'];
+    const rIds = ['r11','r12','r13','r21','r22'];
+    const cm = thisMonth();
+    const tenants = names.map((nm,i) => ({id:'t'+i, name:nm, phone:'08'+(1+i)+'-555-01'+pad(i), idCard:'', roomId:rIds[i],
+      startDate:addMonth(cm,-(6+i*2))+'-01', endDate: i===1 ? addMonth(cm,1)+'-10' : addMonth(cm, 6+i)+'-01',
+      deposit:String(i<3?6000:9000), address:'', emergency:'', status:'active', note:''}));
+    rooms.find(r=>r.id==='r23').status = 'reserved';
+    Object.assign(rooms.find(r=>r.id==='r21'), {waterMode:'flat', waterFlat:'200'});
+    const bills = [];
+    tenants.forEach((t,i) => {
+      let w = 120 + i*37, e = 1500 + i*230;
+      const rr = rooms.find(x=>x.id===t.roomId), fl = rr.waterMode === 'flat';
+      bills.push({id:'mi'+i, billType:'movein', billNo:'MI'+t.startDate.replace(/-/g,'')+'-'+rr.number, month:t.startDate.slice(0,7), moveInDate:t.startDate,
+        roomId:rr.id, roomNumber:rr.number, tenantId:t.id, tenantName:t.name, rent:rr.price, advMonths:'1', deposit:t.deposit,
+        waterMode: fl?'flat':'unit', waterPrev: fl?'':String(w-60), waterCurr: fl?'':String(w-60), waterAmt:'0', elecPrev:String(e-700), elecCurr:String(e-700), elecAmt:'0',
+        extras:JSON.stringify([{name:'ค่าคีย์การ์ด/กุญแจ', amount:200}]), discount:'0', total:String(n(rr.price)+n(t.deposit)+200),
+        status:'paid', dueDate:t.startDate, paidDate:t.startDate, paidMethod:'โอนเงิน', note:''});
+      [-3,-2,-1].forEach(k => {
+        const m = addMonth(cm,k), r = rooms.find(x=>x.id===t.roomId);
+        const w2 = w + 8 + ((i*3+k+9)%7), e2 = e + 95 + ((i*17+k*5+50)%70);
+        const b = {id:'b'+i+k, month:m, roomId:r.id, roomNumber:r.number, tenantId:t.id, tenantName:t.name, rent:r.price,
+          waterPrev:String(w), waterCurr:String(w2), waterRate:S.waterRate, elecPrev:String(e), elecCurr:String(e2), elecRate:S.elecRate,
+          extras:JSON.stringify(k===-1&&i===0 ? [{name:'ค่าส่วนกลาง', amount:100},{name:'ค่าซ่อมแซม', amount:350}] : [{name:'ค่าส่วนกลาง', amount:100}]), discount:'0', dueDate:addMonth(m,1)+'-05', note:''};
+        if(r.waterMode === 'flat'){ Object.assign(b, {waterMode:'flat', waterFlat:r.waterFlat, waterPrev:'', waterCurr:'', waterRate:''}); }
+        if(k === -1){ b.elecPhoto = sampleMeter('elec', e2); if(r.waterMode !== 'flat') b.waterPhoto = sampleMeter('water', w2); }
+        const c = calcBill(b, S); b.waterAmt=String(c.wa); b.elecAmt=String(c.ea); b.total=String(c.total);
+        b.billNo = 'INV' + m.replace('-','') + '-' + r.number;
+        const paid = k < -1 || i < 3;
+        b.status = paid ? 'paid' : 'unpaid';
+        if(paid){ b.paidDate = addMonth(m,1)+'-0'+(2+i%3); b.paidMethod = i%2 ? 'เงินสด' : 'โอนเงิน'; }
+        bills.push(b); w = w2; e = e2;
+      });
+    });
+    const expenses = [
+      {id:'e1', date:addMonth(cm,-1)+'-12', category:'ค่าซ่อมบำรุง', detail:'เปลี่ยนก๊อกน้ำห้อง 103', amount:'450', roomId:'r13', note:''},
+      {id:'e2', date:addMonth(cm,-1)+'-28', category:'ค่าน้ำ-ไฟส่วนกลาง', detail:'ไฟทางเดิน', amount:'820', roomId:'', note:''},
+      {id:'e3', date:addMonth(cm,-2)+'-15', category:'ค่าจ้างแม่บ้าน', detail:'ทำความสะอาดส่วนกลาง', amount:'1500', roomId:'', note:''}
+    ];
+    const repairs = [
+      {id:'m1', date:addMonth(cm,0)+'-02', roomId:'r24', title:'แอร์ไม่เย็น', detail:'ล้างแอร์และเติมน้ำยา', status:'doing', cost:'', doneDate:''},
+      {id:'m2', date:addMonth(cm,-1)+'-10', roomId:'r13', title:'ก๊อกน้ำรั่ว', detail:'', status:'done', cost:'450', doneDate:addMonth(cm,-1)+'-12'}
+    ];
+    return {settings:S, rooms, tenants, bills, expenses, repairs};
+  }
+  return {
+    apiGetAll(pin){ load(); if(st.settings.pinHash && st.settings.pinHash !== pin) return {locked:true, systemName:st.settings.systemName};
+      return clone({settings:pub(), rooms:st.rooms, tenants:st.tenants, bills:st.bills, expenses:st.expenses, repairs:st.repairs}); },
+    apiSave(pin, name, obj){ load(); auth(pin); const r = up(name, obj); save(); return r; },
+    apiSaveMany(pin, name, list){ load(); auth(pin); const r = list.map(o => up(name, o)); save(); return r; },
+    apiDelete(pin, name, id){ load(); auth(pin); const arr = st[MAP[name]]; const i = arr.findIndex(x => x.id === id); if(i>-1) arr.splice(i,1); save(); return i>-1; },
+    apiSaveSettings(pin, obj){ load(); auth(pin); obj = Object.assign({}, obj); ['qrImage','signImage','hasPin','pinHash'].forEach(k => delete obj[k]);
+      if('newPin' in obj){ obj.pinHash = obj.newPin || ''; delete obj.newPin; } Object.assign(st.settings, obj); save(); return pub(); },
+    apiUploadQR(pin, d){ load(); auth(pin); st.settings.qrImage = d; save(); return d; },
+    apiRemoveQR(pin){ load(); auth(pin); st.settings.qrImage = ''; save(); return true; },
+    apiUploadPhoto(pin, d){ load(); auth(pin); return d; },     // โหมดทดลอง: เก็บรูปไว้ในบิลโดยตรง
+    apiGetImage(pin, id){ return id; },
+    apiDeletePhoto(){ return true; },
+    apiUploadSign(pin, d){ load(); auth(pin); st.settings.signImage = d; save(); return d; },
+    apiRemoveSign(pin){ load(); auth(pin); st.settings.signImage = ''; save(); return true; },
+    reset(){ localStorage.removeItem(K); st = null; }
+  };
+})();
+
+/* ---------- Supabase backend (เวอร์ชัน GitHub Pages) ---------- */
+const Supa = (() => {
+  if(!IS_SUPA) return null;
+  const TBL = {Rooms:'rooms', Tenants:'tenants', Bills:'bills', Expenses:'expenses', Repairs:'repairs'};
+  const FIELDS = {
+    Rooms:['id','number','floor','type','price','status','note','createdAt','waterMode','waterFlat'],
+    Tenants:['id','name','phone','idCard','roomId','startDate','endDate','deposit','address','emergency','status','note','createdAt'],
+    Bills:['id','billNo','month','roomId','roomNumber','tenantId','tenantName','rent','waterPrev','waterCurr','waterRate','waterAmt',
+      'elecPrev','elecCurr','elecRate','elecAmt','extras','discount','total','status','dueDate','paidDate','paidMethod',
+      'note','createdAt','waterMode','waterFlat','billType','moveInDate','advMonths','deposit','waterPhoto','elecPhoto'],
+    Expenses:['id','date','category','detail','amount','roomId','note','createdAt'],
+    Repairs:['id','date','roomId','title','detail','status','cost','doneDate','createdAt']
+  };
+  const NUM = new Set(['price','waterFlat','deposit','rent','waterPrev','waterCurr','waterRate','waterAmt','elecPrev','elecCurr','elecRate','elecAmt','discount','total','advMonths','amount','cost']);
+  const DATE = new Set(['startDate','endDate','dueDate','paidDate','moveInDate','date','doneDate']);
+  const DEF = {systemName:'ระบบจัดการห้องเช่า', ownerName:'', address:'', phone:'', bankName:'', accountName:'', accountNo:'', promptPay:'',
+    qrPath:'', signPath:'', signMode:'all', waterMode:'unit', waterFlat:'100', waterRate:'18', waterMin:'0', elecRate:'8', commonFee:'0',
+    dueDay:'5', invoiceNote:'กรุณาชำระเงินภายในวันที่กำหนด ขอบคุณค่ะ'};
+  const PRIVATE = ['qrImage','signImage','hasPin','pinHash','newPin','userEmail'];
+  let sb = null, uid = '', email = '';
+  function client(){
+    if(sb) return sb;
+    if(!window.supabase || !window.supabase.createClient) throw new Error('โหลดไลบรารี Supabase ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+    sb = window.supabase.createClient(SUPA_CFG.url, SUPA_CFG.key, {auth:{persistSession:true, autoRefreshToken:true}});
+    sb.auth.onAuthStateChange((ev, s) => {
+      uid = s ? s.user.id : ''; email = s ? s.user.email : '';
+      if(ev === 'SIGNED_OUT'){
+        DB = {settings:{}, rooms:[], tenants:[], bills:[], expenses:[], repairs:[]};
+        Object.assign(AD, {users:[], me:'', config:{}, q:'', tab:'all', loaded:false});
+        syncAccountUI(); $('#view').innerHTML = ''; showLock();
+      }
+    });
+    return sb;
+  }
+  const snake = k => k.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
+  const camel = k => k.replace(/_([a-z])/g, (m, c) => c.toUpperCase());
+  const newId = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)).replace(/-/g, '').slice(0, 12);
+  function chk(r){
+    if(r.error){
+      const m = r.error.message || String(r.error);
+      if(r.error.status === 401 || /JWT|not authenticated|row-level security/i.test(m)) throw new Error('LOCKED');
+      throw new Error(m);
+    }
+    return r.data;
+  }
+  function toRow(name, o){
+    const r = {};
+    FIELDS[name].forEach(k => {
+      if(!(k in o)) return;
+      let v = o[k];
+      if(k === 'createdAt'){ if(v) r.created_at = v; return; }
+      if(NUM.has(k)){ v = (v === '' || v == null) ? null : Number(String(v).replace(/,/g, '')); if(v !== null && !isFinite(v)) v = null; }
+      else if(DATE.has(k)){ v = String(v || '').slice(0, 10); if(!/^\d{4}-\d{2}-\d{2}$/.test(v)) v = null; }
+      else if(k === 'extras'){ v = parseExtras(v); }
+      else v = v == null ? '' : String(v);
+      r[snake(k)] = v;
+    });
+    return r;
+  }
+  function fromRow(row){
+    const o = {};
+    Object.keys(row).forEach(k => {
+      if(k === 'owner_id') return;
+      const v = row[k];
+      o[camel(k)] = v == null ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+    });
+    return o;
+  }
+  async function session(){ const {data} = await client().auth.getSession(); const s = data && data.session; uid = s ? s.user.id : ''; email = s ? s.user.email : ''; return s; }
+  async function need(){ if(!uid && !(await session())) throw new Error('LOCKED'); }
+  async function all(t){
+    let out = [], from = 0;
+    for(;;){
+      const rows = chk(await client().from(t).select('*').order('created_at').order('id').range(from, from + 999));
+      out = out.concat(rows.map(fromRow));
+      if(rows.length < 1000) return out;
+      from += 1000;
+    }
+  }
+  async function getSettings(){ const d = chk(await client().from('settings').select('data').maybeSingle()); return Object.assign({}, DEF, d ? d.data : {}); }
+  async function putSettings(patch){
+    const data = Object.assign(await getSettings(), patch);
+    PRIVATE.forEach(k => delete data[k]);
+    chk(await client().from('settings').upsert({owner_id:uid, data, updated_at:new Date().toISOString()}));
+    return data;
+  }
+  const pub = s => Object.assign({}, s, {hasPin:false, userEmail:email});
+  const own = p => !!p && String(p).indexOf(uid + '/') === 0;
+  function toBlob(d){
+    const m = String(d || '').match(/^data:([\w.+-]+\/[\w.+-]+);base64,(.+)$/);
+    if(!m) throw new Error('ไฟล์รูปไม่ถูกต้อง');
+    const bin = atob(m[2]), a = new Uint8Array(bin.length);
+    for(let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    return new Blob([a], {type:m[1]});
+  }
+  const extOf = t => t === 'image/png' ? 'png' : t === 'image/webp' ? 'webp' : 'jpg';
+  async function upload(prefix, d){
+    const b = toBlob(d), path = uid + '/' + prefix + '-' + newId() + '.' + extOf(b.type);
+    chk(await client().storage.from('files').upload(path, b, {contentType:b.type, upsert:false}));
+    return path;
+  }
+  async function remove(p){ if(own(p)) { try { await client().storage.from('files').remove([p]); } catch(e){} } }
+  function readBlob(b){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(b); }); }
+  async function download(p){
+    if(!own(p)) return '';
+    const {data, error} = await client().storage.from('files').download(p);
+    return error || !data ? '' : readBlob(data);
+  }
+  async function setImage(key, prefix, d){
+    await need();
+    const old = (await getSettings())[key];
+    const path = await upload(prefix, d);
+    await putSettings({[key]:path});
+    await remove(old);
+    return d;
+  }
+  async function clearImage(key){ await need(); const old = (await getSettings())[key]; await putSettings({[key]:''}); await remove(old); return true; }
+  function table(name){ if(!TBL[name]) throw new Error('ไม่รู้จักตาราง: ' + name); return TBL[name]; }
+  return {
+    get email(){ return email; },
+    async signIn(mail, pass){ const r = await client().auth.signInWithPassword({email:mail, password:pass}); if(r.error) throw r.error; await session(); return true; },
+    async signOut(){ await client().auth.signOut(); uid = ''; email = ''; },
+    async changePassword(pass){ chk(await client().auth.updateUser({password:pass})); return true; },
+    async apiGetAll(){
+      if(!(await session())) return {locked:true, systemName:''};
+      const [prof, cfg] = await Promise.all([
+        client().from('profiles').select('*').maybeSingle(),
+        client().from('app_config').select('key,value')
+      ]);
+      const account = chk(prof), contact = ((chk(cfg) || []).find(c => c.key === 'contact') || {}).value || '';
+      const today = todayStr();
+      const reason = !account ? 'missing' : !account.active ? 'suspended'
+        : (!account.is_admin && account.expires_at && account.expires_at < today) ? 'expired' : '';
+      if(reason) return {expired:true, reason, account, contact, email};
+      const [s, rooms, tenants, bills, expenses, repairs] = await Promise.all([getSettings(), all('rooms'), all('tenants'), all('bills'), all('expenses'), all('repairs')]);
+      const p = pub(s);
+      [p.qrImage, p.signImage] = await Promise.all([download(s.qrPath), download(s.signPath)]);
+      return {settings:p, rooms, tenants, bills, expenses, repairs, account, contact};
+    },
+    async admin(action, data){
+      await need();
+      const {data:res, error} = await client().functions.invoke('admin-users', {body:Object.assign({action}, data || {})});
+      if(error){
+        let m = error.message || String(error);
+        try { const j = await error.context.json(); if(j && j.error) m = j.error; } catch(e){}
+        throw new Error(m);
+      }
+      if(res && res.error) throw new Error(res.error);
+      return res;
+    },
+    async apiSave(pin, name, obj){
+      await need(); const t = table(name);
+      obj = Object.assign({}, obj); if(!obj.id) obj.id = newId();
+      return fromRow(chk(await client().from(t).upsert(toRow(name, obj)).select().single()));
+    },
+    async apiSaveMany(pin, name, list){
+      await need(); const t = table(name);
+      const rows = (list || []).map(o => { o = Object.assign({}, o); if(!o.id) o.id = newId(); return toRow(name, o); });
+      if(!rows.length) return [];
+      return chk(await client().from(t).upsert(rows, {defaultToNull:false}).select()).map(fromRow);
+    },
+    async apiDelete(pin, name, id){ await need(); chk(await client().from(table(name)).delete().eq('id', id)); return true; },
+    async apiSaveSettings(pin, obj){ await need(); obj = Object.assign({}, obj); delete obj.qrPath; delete obj.signPath; return pub(await putSettings(obj)); },
+    apiUploadQR(pin, d){ return setImage('qrPath', 'payment-qr', d); },
+    apiRemoveQR(){ return clearImage('qrPath'); },
+    apiUploadSign(pin, d){ return setImage('signPath', 'signature', d); },
+    apiRemoveSign(){ return clearImage('signPath'); },
+    async apiUploadPhoto(pin, d, name, oldId){ await need(); const p = await upload('meter/' + String(name || 'meter').replace(/[^\w-]/g, ''), d); await remove(oldId); return p; },
+    async apiGetImage(pin, p){ await need(); return download(p); },
+    async apiDeletePhoto(pin, p){ await need(); await remove(p); return true; }
+  };
+})();
+
+/* =========================================================
+   STATE & DOMAIN
+   ========================================================= */
+let DB = {settings:{}, rooms:[], tenants:[], bills:[], expenses:[], repairs:[]};
+const KEY = {Rooms:'rooms', Tenants:'tenants', Bills:'bills', Expenses:'expenses', Repairs:'repairs'};
+let cur = 'dashboard';
+let billMonth = thisMonth();
+
+const ROOM_ST = {
+  occupied:{label:'มีผู้เช่า', cls:'b-brown'},
+  vacant:{label:'ว่าง', cls:'b-ok'},
+  reserved:{label:'จองแล้ว', cls:'b-info'},
+  maintenance:{label:'ปิดปรับปรุง', cls:'b-warn'}
+};
+const EXTRA_PRESETS = ['ค่าซ่อมแซม','ค่าปรับชำระล่าช้า','ค่าทำความสะอาด','ค่าอินเทอร์เน็ต','ค่าที่จอดรถ','ค่ากุญแจ/คีย์การ์ด'];
+const PAY_METHODS =['โอนเงิน','พร้อมเพย์','เงินสด','อื่นๆ'];
+const EXP_CATS = ['ค่าซ่อมบำรุง','ค่าน้ำ-ไฟส่วนกลาง','ค่าจ้างแม่บ้าน','ค่าอินเทอร์เน็ต','ภาษี/ค่าธรรมเนียม','อุปกรณ์/ของใช้','อื่นๆ'];
+const REP_ST = {pending:{label:'รอดำเนินการ', cls:'b-bad'}, doing:{label:'กำลังซ่อม', cls:'b-warn'}, done:{label:'เสร็จแล้ว', cls:'b-ok'}};
+const BANKS = ['ธนาคารกสิกรไทย','ธนาคารไทยพาณิชย์','ธนาคารกรุงเทพ','ธนาคารกรุงไทย','ธนาคารกรุงศรีอยุธยา','ธนาคารทหารไทยธนชาต (ttb)','ธนาคารออมสิน','ธ.ก.ส.','ธนาคารยูโอบี','ธนาคารซีไอเอ็มบี ไทย','ธนาคารเกียรตินาคินภัทร','ธนาคารแลนด์ แอนด์ เฮ้าส์'];
+
+const S = () => DB.settings || {};
+const roomById = id => DB.rooms.find(r => r.id === id);
+const tenantOf = roomId => DB.tenants.find(t => t.roomId === roomId && t.status !== 'moved');
+const roomStatus = r => tenantOf(r.id) ? 'occupied' : (ROOM_ST[r.status] && r.status !== 'occupied' ? r.status : 'vacant');
+const sortRooms = a => a.slice().sort((x,y) => String(x.number).localeCompare(String(y.number), 'th', {numeric:true}));
+const isMI = b => b && b.billType === 'movein';
+const billOf = (roomId, m) => DB.bills.find(b => b.roomId === roomId && b.month === m && !isMI(b));
+const moveInBillOf = tenantId => DB.bills.find(b => isMI(b) && b.tenantId === tenantId);
+// บิลก่อนหน้า (ใช้ดึงเลขมิเตอร์) — บิลแรกเข้าในเดือนเดียวกันนับเป็น "ก่อนหน้า" ของบิลรายเดือน
+const meterKey = b => b.month + (isMI(b) ? '0' : '1');
+const beforeMonth = (b, m) => isMI(b) ? b.month <= m : b.month < m;
+const lastBillBefore = (roomId, m) => DB.bills.filter(b => b.roomId === roomId && beforeMonth(b, m)).sort((a,b) => meterKey(b).localeCompare(meterKey(a)))[0];
+const billLabel = b => isMI(b) ? 'บิลแรกเข้า · ' + dateTH(b.moveInDate || b.dueDate) : monthTH(b.month);
+const billIncome = b => n(b.total) - n(b.deposit);   // ไม่นับเงินประกันเป็นรายได้
+const roomLabel = id => { const r = roomById(id); return r ? 'ห้อง ' + r.number : '-'; };
+function billState(b){
+  if(!b) return {k:'none', label:'ยังไม่ออกบิล', cls:'b-muted'};
+  if(b.status === 'paid') return {k:'paid', label:'ชำระแล้ว', cls:'b-ok'};
+  if(b.dueDate && b.dueDate < todayStr()) return {k:'overdue', label:'เกินกำหนด', cls:'b-bad'};
+  return {k:'unpaid', label:'รอชำระ', cls:'b-warn'};
+}
+function calcBill(b, s){
+  s = s || S();
+  const flat = b.waterMode === 'flat';
+  const wu = flat ? 0 : Math.max(0, n(b.waterCurr) - n(b.waterPrev));
+  let wa = flat ? n(b.waterFlat) : wu * n(b.waterRate), wMin = false;
+  if(!flat && n(s.waterMin) > 0 && wa < n(s.waterMin) && (b.waterCurr !== '' && b.waterCurr != null)) { wa = n(s.waterMin); wMin = true; }
+  const eu = Math.max(0, n(b.elecCurr) - n(b.elecPrev));
+  const ea = eu * n(b.elecRate);
+  const ext = sum(parseExtras(b.extras), 'amount');
+  const total = Math.round((n(b.rent) + wa + ea + ext - n(b.discount)) * 100) / 100;
+  return {wu, wa, wMin, eu, ea, ext, total};
+}
+function defaultDue(m){ const d = Math.min(28, Math.max(1, n(S().dueDay) || 5)); return addMonth(m, 1) + '-' + pad(d); }
+function upsertLocal(sheet, rec){ const arr = DB[KEY[sheet]]; const i = arr.findIndex(x => x.id === rec.id); if(i > -1) arr[i] = rec; else arr.push(rec); }
+async function saveRec(sheet, obj){ const r = await call('Save', sheet, obj); upsertLocal(sheet, r); return r; }
+async function delRec(sheet, id){ await call('Delete', sheet, id); DB[KEY[sheet]] = DB[KEY[sheet]].filter(x => x.id !== id); }
+async function saveSettings(obj){ const s = await call('SaveSettings', obj); s.qrImage = DB.settings.qrImage; s.signImage = DB.settings.signImage; DB.settings = s; applyBrand(); return s; }
+
+/* =========================================================
+   UI SHELL
+   ========================================================= */
+const PAGES = [
+  {id:'dashboard', label:'ภาพรวม', icon:'home', sec:'หลัก'},
+  {id:'bills', label:'บันทึกบิล', icon:'receipt'},
+  {id:'rooms', label:'จัดการห้องพัก', icon:'door'},
+  {id:'tenants', label:'ข้อมูลผู้เช่า', icon:'users'},
+  {id:'reports', label:'รายงานสรุปยอด', icon:'chart', sec:'รายงาน'},
+  {id:'history', label:'ประวัติย้อนหลัง', icon:'history'},
+  {id:'expenses', label:'รายจ่าย', icon:'coins'},
+  {id:'repairs', label:'แจ้งซ่อม', icon:'tool'},
+  {id:'payment', label:'ตั้งค่าบัญชีรับเงิน', icon:'wallet', sec:'ตั้งค่า'},
+  {id:'settings', label:'ตั้งค่าระบบ', icon:'settings'}
+];
+const BOTTOM = ['dashboard','bills','rooms','tenants'];
+
+function renderNav(){
+  const unpaid = DB.bills.filter(b => b.status !== 'paid').length;
+  const rep = DB.repairs.filter(r => r.status !== 'done').length;
+  const badge = id => id==='bills' && unpaid ? `<span class="cnt">${unpaid}</span>` : id==='repairs' && rep ? `<span class="cnt">${rep}</span>` : '';
+  $('#nav').innerHTML = PAGES.map(p => (p.sec ? `<div class="nav-sec">${p.sec}</div>` : '') +
+    `<a class="${cur===p.id?'active':''}" onclick="go('${p.id}')">${ic(p.icon)}<span>${p.label}</span>${badge(p.id)}</a>`).join('');
+  $('#bottomNav').innerHTML = BOTTOM.map(id => { const p = PAGES.find(x => x.id === id);
+    return `<a class="${cur===id?'active':''}" onclick="go('${id}')">${ic(p.icon)}<span>${p.label.replace('จัดการ','').replace('ข้อมูล','')}</span></a>`; }).join('') +
+    `<a class="${BOTTOM.includes(cur)?'':'active'}" onclick="openDrawer()">${ic('menu')}<span>เมนูอื่น</span></a>`;
+  $('#sideFoot').innerHTML = IS_GAS ? 'เชื่อมต่อ Google Sheet แล้ว' : IS_SUPA ? 'เชื่อมต่อ Supabase แล้ว' : 'โหมดทดลอง (Local)';
+}
+function applyBrand(){
+  const name = S().systemName || 'ระบบจัดการห้องเช่า';
+  $('#brandName').textContent = name; document.title = name;
+  if(IS_GAS){ try { google.script.host.setTitle && google.script.host.setTitle(name); } catch(e){} }
+}
+function go(page){ cur = page; closeDrawer(); render(); window.scrollTo(0,0); try { localStorage.setItem('rent_page', page); } catch(e){} }
+function render(){
+  renderNav();
+  const p = PAGES.find(x => x.id === cur) || PAGES[0];
+  $('#pageTitle').textContent = p.label;
+  $('#view').innerHTML = VIEWS[p.id]();
+  AFTER[p.id] && AFTER[p.id]();
+}
+function openDrawer(){ $('#sidebar').classList.add('open'); $('#overlay').classList.add('show'); }
+function closeDrawer(){ $('#sidebar').classList.remove('open'); $('#overlay').classList.remove('show'); }
+
+function openModal({title, body, foot='', size=''}){
+  $('#modalTitle').textContent = title;
+  $('#modalBody').innerHTML = body;
+  $('#modalFoot').innerHTML = foot;
+  $('#modalCard').className = 'modal-card ' + size;
+  $('#modal').classList.add('show');
+  $('#modalBody').scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(){ $('#modal').classList.remove('show'); document.body.style.overflow = ''; }
+function confirmBox(msg, {title='ยืนยัน', yes='ยืนยัน', danger=false}={}){
+  return new Promise(res => {
+    $('#cfTitle').textContent = title; $('#cfBody').innerHTML = msg;
+    const y = $('#cfYes'), no = $('#cfNo');
+    y.textContent = yes; y.className = 'btn ' + (danger ? 'btn-primary' : 'btn-primary');
+    if(danger) y.style.background = 'var(--bad)', y.style.borderColor = 'var(--bad)'; else y.style.background = y.style.borderColor = '';
+    const done = v => { $('#confirmBox').classList.remove('show'); y.onclick = no.onclick = null; res(v); };
+    y.onclick = () => done(true); no.onclick = () => done(false);
+    $('#confirmBox').classList.add('show');
+  });
+}
+function toast(msg, type=''){
+  const el = document.createElement('div'); el.className = 'toast ' + type; el.textContent = msg;
+  $('#toasts').appendChild(el); setTimeout(() => el.remove(), 2800);
+}
+function emptyBox(icon, text, btn=''){ return `<div class="empty"><div class="ic">${ic(icon)}</div><div>${text}</div>${btn?`<div style="margin-top:14px">${btn}</div>`:''}</div>`; }
+function withBtn(btn, fn){ return async (...a) => { const b = btn; if(b) b.disabled = true; try { await fn(...a); } catch(e){ console.error(e); } finally { if(b) b.disabled = false; } }; }
+
+/* =========================================================
+   VIEWS
+   ========================================================= */
+const VIEWS = {}, AFTER = {};
+
+/* ---------- ภาพรวม ---------- */
+VIEWS.dashboard = () => {
+  const m = thisMonth(), rooms = sortRooms(DB.rooms);
+  if(!rooms.length) return welcomeCard();
+  const occ = rooms.filter(r => tenantOf(r.id)).length;
+  const vac = rooms.filter(r => roomStatus(r) === 'vacant').length;
+  const billsM = DB.bills.filter(b => b.month === m);
+  const recvM = sum(DB.bills.filter(b => b.status === 'paid' && (b.paidDate||'').slice(0,7) === m), 'total');
+  const unpaid = DB.bills.filter(b => b.status !== 'paid').sort((a,b) => (a.dueDate||'').localeCompare(b.dueDate||''));
+  const notBilled = rooms.filter(r => tenantOf(r.id) && !billOf(r.id, m));
+  const expiring = DB.tenants.filter(t => t.status !== 'moved' && t.endDate && daysUntil(t.endDate) <= 45).sort((a,b) => a.endDate.localeCompare(b.endDate));
+  const repairs = DB.repairs.filter(r => r.status !== 'done');
+  const tile = r => { const st = roomStatus(r), t = tenantOf(r.id), b = billOf(r.id, m), bs = billState(b);
+    const dot = st==='occupied' ? `<span class="bd" style="background:${bs.k==='paid'?'var(--ok)':bs.k==='none'?'var(--beige-2)':bs.k==='overdue'?'var(--bad)':'var(--warn)'}" title="${bs.label}"></span>` : '';
+    return `<button class="tile ${st}" onclick="tileClick('${r.id}')"><div class="no">${esc(r.number)}${dot}</div><div class="nm">${t?esc(t.name):ROOM_ST[st].label}</div></button>`; };
+  return `<div class="stack">
+    <div class="grid g4">
+      ${statCard('door','ห้องทั้งหมด', rooms.length, `มีผู้เช่า ${occ} · ว่าง ${vac}`)}
+      ${statCard('users','อัตราการเข้าพัก', Math.round(occ/rooms.length*100)+'%', `${occ} จาก ${rooms.length} ห้อง`)}
+      ${statCard('wallet','รับเงินเดือนนี้', baht(recvM), monthTH(m))}
+      ${statCard('alert','ยอดค้างชำระ', baht(sum(unpaid,'total')), `${unpaid.length} บิล`)}
+    </div>
+    ${notBilled.length ? `<div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--egg)">
+      <div style="flex:1;min-width:200px"><b>ยังไม่ได้ออกบิลเดือน${TH_M[+m.slice(5)-1]} ${notBilled.length} ห้อง</b><div class="sm muted">${notBilled.map(r=>esc(r.number)).join(', ')}</div></div>
+      <button class="btn btn-primary" onclick="billMonth='${m}';go('bills')">${ic('receipt')}ออกบิลเลย</button></div>` : ''}
+    <div class="grid g2" style="align-items:start">
+      <div class="card"><h3>${ic('door')}ผังห้องพัก</h3><div class="tiles">${rooms.map(tile).join('')}</div>
+        <div class="legend"><span><i style="background:var(--egg);border:1px solid var(--beige-2)"></i>มีผู้เช่า</span><span><i style="background:var(--ok-bg)"></i>ว่าง</span><span><i style="background:var(--info-bg)"></i>จอง</span><span><i style="background:var(--warn-bg)"></i>ปรับปรุง</span></div>
+        <div class="legend"><span><i style="background:var(--ok);border-radius:50%"></i>จ่ายแล้ว</span><span><i style="background:var(--warn);border-radius:50%"></i>รอชำระ</span><span><i style="background:var(--bad);border-radius:50%"></i>เกินกำหนด</span><span><i style="background:var(--beige-2);border-radius:50%"></i>ยังไม่ออกบิล</span></div>
+      </div>
+      <div class="stack">
+        <div class="card"><h3>${ic('receipt')}บิลค้างชำระ</h3>
+          ${unpaid.length ? `<div class="list">${unpaid.slice(0,6).map(b => { const bs = billState(b); return `<div class="row">
+            <div class="avatar">${esc(b.roomNumber)}</div>
+            <div class="main"><div class="t">${esc(b.tenantName||'-')}</div><div class="s">${billLabel(b)} · ครบกำหนด ${dateTH(b.dueDate)} <span class="badge ${bs.cls}">${bs.label}</span></div></div>
+            <div class="amt">${baht(b.total)}</div>
+            <div class="acts"><button class="btn btn-sm btn-ok" onclick="openPay('${b.id}')">${ic('check')}รับชำระ</button></div></div>`; }).join('')}</div>
+            ${unpaid.length>6?`<button class="btn btn-sm" style="margin-top:8px" onclick="HF.status='unpaid';go('history')">ดูทั้งหมด ${unpaid.length} รายการ</button>`:''}`
+          : emptyBox('check','ไม่มีบิลค้างชำระ')}
+        </div>
+        ${expiring.length ? `<div class="card"><h3>${ic('calendar')}สัญญาใกล้ครบกำหนด</h3><div class="list">${expiring.map(t => { const d = daysUntil(t.endDate); return `<div class="row">
+          <div class="avatar">${initials(t.name)}</div><div class="main"><div class="t">${esc(t.name)}</div><div class="s">${roomLabel(t.roomId)} · สิ้นสุด ${dateTH(t.endDate)}</div></div>
+          <span class="badge ${d<0?'b-bad':d<=15?'b-warn':'b-info'}">${d<0?'เลยมา '+(-d)+' วัน':'อีก '+d+' วัน'}</span></div>`; }).join('')}</div></div>` : ''}
+        ${repairs.length ? `<div class="card"><h3>${ic('tool')}งานซ่อมค้างอยู่</h3><div class="list">${repairs.map(r => `<div class="row"><div class="main"><div class="t">${esc(r.title)}</div><div class="s">${roomLabel(r.roomId)} · แจ้ง ${dateTH(r.date)}</div></div><span class="badge ${(REP_ST[r.status]||{}).cls||'b-muted'}">${(REP_ST[r.status]||{}).label||esc(r.status)}</span></div>`).join('')}</div></div>` : ''}
+      </div>
+    </div>
+  </div>`;
+};
+function statCard(icon, lbl, val, sub){ return `<div class="card stat"><div class="lbl"><span class="dot">${ic(icon)}</span>${lbl}</div><div class="val">${val}</div><div class="sub">${sub||''}</div></div>`; }
+function welcomeCard(){
+  return `<div class="card welcome"><h2>ยินดีต้อนรับสู่ ${esc(S().systemName||'ระบบจัดการห้องเช่า')}</h2><div style="opacity:.85">เริ่มต้นใช้งานได้ใน 4 ขั้นตอนง่าย ๆ</div>
+    <div class="steps">
+      <button onclick="editSystemName()"><b>1. ตั้งชื่อระบบ</b><span class="sm">ชื่อหอพัก/อพาร์ตเมนต์</span></button>
+      <button onclick="go('settings')"><b>2. ตั้งค่าน้ำ-ไฟ</b><span class="sm">อัตราต่อหน่วย วันครบกำหนด</span></button>
+      <button onclick="go('rooms');setTimeout(openBulkRooms,50)"><b>3. เพิ่มห้องพัก</b><span class="sm">เพิ่มทีละหลายห้องได้</span></button>
+      <button onclick="go('payment')"><b>4. ตั้งบัญชีรับเงิน</b><span class="sm">แนบ QR และเลขบัญชี</span></button>
+    </div></div>`;
+}
+function tileClick(id){
+  const r = roomById(id);
+  if(tenantOf(id)){ const b = billOf(id, thisMonth()); b ? openInvoice(b.id) : openBillForm(id, thisMonth()); }
+  else openRoomForm(r.id);
+}
+
+/* ---------- บันทึกบิล ---------- */
+VIEWS.bills = () => {
+  const m = billMonth;
+  const list = sortRooms(DB.rooms).filter(r => tenantOf(r.id) || billOf(r.id, m));
+  const bills = list.map(r => billOf(r.id, m)).filter(Boolean);
+  const paid = bills.filter(b => b.status === 'paid');
+  const head = `<div class="toolbar">
+    <div class="month-nav"><button class="btn-icon" onclick="shiftBillMonth(-1)" aria-label="เดือนก่อน">${ic('left')}</button>
+      <input type="month" value="${m}" onchange="billMonth=this.value||thisMonth();render()">
+      <button class="btn-icon" onclick="shiftBillMonth(1)" aria-label="เดือนถัดไป">${ic('right')}</button></div>
+    <div class="chips"><span class="badge b-muted">ออกบิลแล้ว ${bills.length}/${list.length}</span><span class="badge b-ok">ชำระแล้ว ${paid.length}</span><span class="badge b-warn">ค้าง ${bills.length-paid.length}</span></div>
+    <div class="grow"></div>
+    <button class="btn btn-soft" onclick="openMoveInPicker()">${ic('door')}บิลแรกเข้า</button>
+  </div>
+  <div class="grid g3" style="margin-bottom:18px">
+    ${statCard('receipt','ยอดเรียกเก็บ', baht(sum(bills,'total')), monthTH(m))}
+    ${statCard('check','ได้รับแล้ว', baht(sum(paid,'total')), paid.length+' บิล')}
+    ${statCard('alert','ค้างชำระ', baht(sum(bills,'total')-sum(paid,'total')), (bills.length-paid.length)+' บิล')}
+  </div>`;
+  if(!list.length) return head + `<div class="card">${emptyBox('users','ยังไม่มีห้องที่มีผู้เช่า', `<button class="btn btn-primary" onclick="go('tenants')">${ic('plus')}เพิ่มผู้เช่า</button>`)}</div>`;
+  return head + `<div class="grid auto">${list.map(r => {
+    const b = billOf(r.id, m), t = tenantOf(r.id), bs = billState(b);
+    return `<div class="room-card st-${roomStatus(r)}">
+      <div class="top"><div class="room-no">${esc(r.number)}</div><span class="badge ${bs.cls}">${bs.label}</span></div>
+      <div class="tn">${ic('users','style="width:15px;height:15px;color:var(--muted)"')}${esc(b ? b.tenantName : t ? t.name : '-')}</div>
+      ${b ? `<div class="bill-amt">${baht(b.total)}</div><div class="meta">${b.waterMode==='flat'?'น้ำเหมาจ่าย':'น้ำ '+fmt(n(b.waterCurr)-n(b.waterPrev))+' หน่วย'} · ไฟ ${fmt(n(b.elecCurr)-n(b.elecPrev))} หน่วย${b.waterPhoto || b.elecPhoto ? ` <span title="มีรูปมิเตอร์" style="vertical-align:-3px">${ic('camera','style="width:15px;height:15px"')}</span>` : ''}</div>
+        <div class="acts"><button class="btn btn-sm" onclick="openInvoice('${b.id}')">${ic('eye')}ดูบิล</button>
+          ${b.status!=='paid'?`<button class="btn btn-sm btn-ok" onclick="openPay('${b.id}')">${ic('check')}รับชำระ</button>`:''}
+          <button class="btn-icon" title="แก้ไข" onclick="openBillForm('${r.id}','${m}','${b.id}')">${ic('edit')}</button></div>`
+      : `<div class="meta">ค่าเช่า ${baht(r.price)}</div><div class="acts"><button class="btn btn-sm btn-primary" onclick="openBillForm('${r.id}','${m}')">${ic('plus')}ออกบิล</button></div>`}
+    </div>`; }).join('')}</div>` + moveInSection(m);
+};
+function moveInSection(m){
+  const mis = DB.bills.filter(b => isMI(b) && b.month === m).sort((a,b) => String(a.roomNumber).localeCompare(String(b.roomNumber), 'th', {numeric:true}));
+  if(!mis.length) return '';
+  return `<div class="card" style="margin-top:18px;padding:8px 18px"><h3 style="margin:12px 0 4px">${ic('door')}บิลแรกเข้าเดือนนี้</h3><div class="list">${mis.map(billRow).join('')}</div></div>`;
+}
+function shiftBillMonth(k){ billMonth = addMonth(billMonth, k); render(); }
+
+let BF = null;
+function openBillForm(roomId, month, billId){
+  const room = roomById(roomId);
+  let ex = billId ? DB.bills.find(b => b.id === billId) : billOf(roomId, month);
+  const t = ex ? {id:ex.tenantId, name:ex.tenantName} : tenantOf(roomId);
+  if(!t){ toast('ห้องนี้ยังไม่มีผู้เช่า', 'bad'); return; }
+  const prev = lastBillBefore(roomId, month), s = S();
+  const prevW = DB.bills.filter(x => x.roomId === roomId && beforeMonth(x, month) && x.waterMode !== 'flat' && x.waterCurr !== '' && x.waterCurr != null).sort((a,c) => meterKey(c).localeCompare(meterKey(a)))[0];
+  const rw = roomWater(room);
+  const b = ex ? Object.assign({waterMode:'unit'}, ex) : {month, roomId, rent: room.price,
+    waterMode: rw.mode, waterFlat: rw.flat,
+    waterPrev: prevW ? prevW.waterCurr : '', waterCurr:'', waterRate: s.waterRate,
+    elecPrev: prev ? prev.elecCurr : '', elecCurr:'', elecRate: s.elecRate,
+    extras: n(s.commonFee) ? [{name:'ค่าส่วนกลาง', amount:n(s.commonFee)}] : [], discount:'0', dueDate: defaultDue(month), note:''};
+  if(ex && ex.waterMode === 'flat' && !b.waterFlat) b.waterFlat = ex.waterAmt;
+  if(ex && ex.waterMode !== 'flat' && !b.waterFlat) b.waterFlat = rw.flat;
+  if(ex && b.waterMode !== 'flat' && !b.waterPrev && prevW) b.waterPrev = prevW.waterCurr;
+  BF = {roomId, month, ex, tenant:t, room};
+  initPhotos(ex);
+  const ext = parseExtras(b.extras);
+  const flat = b.waterMode === 'flat';
+  const meter = (key, title, color, head='') => `<div class="meter"><div class="meter-t"><span class="sw" style="background:${color}"></span>${title}${head}</div>
+    <div id="${key}Unit" class="${key==='water'&&flat?'hide':''}"><div class="form-grid c3">
+      ${field('เลขครั้งก่อน', numIn(key+'Prev', b[key+'Prev']))}
+      ${field('เลขครั้งนี้ <span class="req">*</span>', numIn(key+'Curr', b[key+'Curr'], 'placeholder="จดมิเตอร์"'))}
+      ${field('บาท/หน่วย', numIn(key+'Rate', b[key+'Rate']))}
+    </div><div class="meter-calc" id="${key}Calc"></div>${photoBox(key)}</div>
+    ${key==='water' ? `<div id="waterFlatBox" class="${flat?'':'hide'}">${field('ค่าน้ำเหมาจ่าย (บาท/เดือน)', numIn('waterFlat', b.waterFlat))}<div class="hint">เหมาจ่าย — ไม่ต้องจดเลขมิเตอร์น้ำ</div></div>` : ''}</div>`;
+  const waterSeg = `<span class="seg"><label><input type="radio" name="waterMode" value="unit" ${flat?'':'checked'} onchange="syncWaterMode()"><span>ตามหน่วย</span></label><label><input type="radio" name="waterMode" value="flat" ${flat?'checked':''} onchange="syncWaterMode()"><span>เหมาจ่าย</span></label></span>`;
+  openModal({
+    title: (ex ? 'แก้ไขบิล' : 'ออกบิลใหม่') + ' · ห้อง ' + room.number, size:'lg',
+    body: `<div class="bill-info"><div><div class="k">ห้อง</div><div class="v">${esc(room.number)}</div></div><div><div class="k">ผู้เช่า</div><div class="v">${esc(t.name)}</div></div><div><div class="k">รอบบิล</div><div class="v">${monthTH(month)}</div></div></div>
+    <form id="billForm" onsubmit="return false" oninput="updateBillSum()">
+      <div class="form-grid">${field('ค่าเช่าห้อง (บาท)', numIn('rent', b.rent))}${field('ครบกำหนดชำระ', `<input type="date" name="dueDate" value="${esc(b.dueDate)}">`)}</div>
+      ${meter('water','ค่าน้ำประปา','#7FA3C0', waterSeg)}
+      ${meter('elec','ค่าไฟฟ้า','#D9A441')}
+      <div class="meter extra-box"><div class="meter-t"><span class="sw" style="background:var(--bad)"></span>ค่าใช้จ่ายอื่น ๆ / เรียกเก็บเพิ่มเติม</div>
+        <div class="hint" style="margin:-4px 0 10px">สำหรับรายการที่เรียกเก็บเฉพาะเดือนนี้ เช่น ค่าซ่อมแซม ค่าปรับ — ไม่ติดไปบิลเดือนถัดไป</div>
+        <div class="chips" style="margin-bottom:10px">${EXTRA_PRESETS.map(p => `<button type="button" class="chip" onclick="addExtraRow({name:'${p}'})">+ ${p}</button>`).join('')}<button type="button" class="chip" onclick="addExtraRow()">+ รายการอื่น</button></div>
+        <div id="exRows">${ext.map(extraRow).join('')}</div>
+      </div>
+      <div class="form-grid" style="margin-top:14px">${field('ส่วนลด (บาท)', numIn('discount', b.discount))}${field('หมายเหตุ', txtIn('note', b.note, 'placeholder="(ถ้ามี) แสดงบนบิล"'))}</div>
+    </form>
+    <div class="bill-sum" id="billSum"></div>`,
+    foot: `<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="billSaveBtn" onclick="saveBill()">${ic('check')}บันทึกบิล</button>`
+  });
+  updateBillSum(); hydratePhotos($('#modalBody'));
+  setTimeout(() => { const el = $('#billForm [name=waterCurr]'); if(el && !el.value && window.innerWidth > 767) el.focus(); }, 60);
+}
+function extraRow(e={}){ return `<div class="ex-row"><input class="ex-name" placeholder="เช่น ค่าอินเทอร์เน็ต" value="${esc(e.name||'')}"><input class="ex-amt" type="number" inputmode="decimal" step="any" placeholder="บาท" value="${esc(e.amount!=null?e.amount:'')}"><button type="button" class="btn-icon" onclick="this.parentNode.remove();refreshSum()">${ic('x')}</button></div>`; }
+function addExtraRow(e){ $('#exRows').insertAdjacentHTML('beforeend', extraRow(e||{})); $('#exRows .ex-row:last-child ' + (e && e.name ? '.ex-amt' : '.ex-name')).focus(); refreshSum(); }
+function refreshSum(){ if($('#miForm')) updateMoveInSum(); else updateBillSum(); }
+function readExtras(){ return $$('#exRows .ex-row').map(r => ({name: r.querySelector('.ex-name').value.trim(), amount: n(r.querySelector('.ex-amt').value)})).filter(e => e.name || e.amount); }
+function syncWaterMode(){
+  const flat = ($('#billForm input[name=waterMode]:checked')||{}).value === 'flat';
+  $('#waterUnit').classList.toggle('hide', flat); $('#waterFlatBox').classList.toggle('hide', !flat);
+  updateBillSum();
+}
+function roomWater(r){ const s = S(); const mode = (r && r.waterMode) || s.waterMode || 'unit'; return {mode, flat: (r && r.waterFlat) || s.waterFlat || ''}; }
+function readBillForm(){
+  const o = formObj($('#billForm'));
+  o.extras = readExtras();
+  return o;
+}
+function updateBillSum(){
+  const o = readBillForm(), c = calcBill(o);
+  const mc = (k, u, a, min) => { const el = $('#'+k+'Calc'); if(!el) return; const bad = o[k+'Curr'] !== '' && n(o[k+'Curr']) < n(o[k+'Prev']);
+    el.innerHTML = `<span>ใช้ไป <b>${fmt(u)}</b> หน่วย${bad?' <span class="warn-text">· เลขครั้งนี้น้อยกว่าครั้งก่อน</span>':''}${min?' <span class="xs">(คิดขั้นต่ำ)</span>':''}</span><b>${baht(a)}</b>`; };
+  mc('water', c.wu, c.wa, c.wMin); mc('elec', c.eu, c.ea);
+  $('#billSum').innerHTML = `<div class="ln"><span>ค่าเช่า</span><span>${baht(o.rent)}</span></div><div class="ln"><span>ค่าน้ำ${o.waterMode==='flat'?' (เหมาจ่าย)':''}</span><span>${baht(c.wa)}</span></div><div class="ln"><span>ค่าไฟ</span><span>${baht(c.ea)}</span></div>
+    ${c.ext?`<div class="ln"><span>ค่าใช้จ่ายอื่น ๆ</span><span>${baht(c.ext)}</span></div>`:''}${n(o.discount)?`<div class="ln"><span>ส่วนลด</span><span>-${baht(o.discount)}</span></div>`:''}
+    <div class="tt"><span>รวมทั้งสิ้น</span><span class="v">${baht(c.total)}</span></div>`;
+}
+async function saveBill(){
+  const o = readBillForm(), c = calcBill(o), {room, month, ex, tenant} = BF;
+  const flat = o.waterMode === 'flat';
+  if(flat && !n(o.waterFlat)){ if(!await confirmBox('ยังไม่ได้กรอกค่าน้ำเหมาจ่าย (เป็น 0 บาท) ต้องการบันทึกต่อหรือไม่?')) return; }
+  if((!flat && o.waterCurr === '') || o.elecCurr === ''){ if(!await confirmBox('ยังไม่ได้กรอกเลขมิเตอร์ครั้งนี้ครบ ต้องการบันทึกต่อหรือไม่?')) return; }
+  const rec = Object.assign({}, ex ? {id:ex.id, status:ex.status} : {status:'unpaid'}, {
+    billNo: ex && ex.billNo ? ex.billNo : 'INV' + month.replace('-','') + '-' + room.number,
+    month, roomId: room.id, roomNumber: room.number, tenantId: tenant.id, tenantName: tenant.name,
+    rent: String(n(o.rent)), waterMode: flat ? 'flat' : 'unit', waterFlat: flat ? String(n(o.waterFlat)) : '',
+    waterPrev: flat ? '' : o.waterPrev, waterCurr: flat ? '' : o.waterCurr, waterRate: flat ? '' : o.waterRate, waterAmt:String(c.wa),
+    elecPrev:o.elecPrev, elecCurr:o.elecCurr, elecRate:o.elecRate, elecAmt:String(c.ea),
+    extras: JSON.stringify(o.extras), discount:String(n(o.discount)), total:String(c.total), dueDate:o.dueDate, note:o.note});
+  const btn = $('#billSaveBtn'); btn.disabled = true;
+  try {
+    const nm = rec.billNo;
+    rec.waterPhoto = await commitPhoto('water', flat, nm);
+    rec.elecPhoto = await commitPhoto('elec', false, nm);
+    const r = await saveRec('Bills', rec); toast('บันทึกบิลเรียบร้อย'); render(); openInvoice(r.id); }
+  catch(e){} finally { btn.disabled = false; }
+}
+/* ---------- รูปมิเตอร์ ---------- */
+// PH = สถานะรูปในฟอร์มที่เปิดอยู่: {water:{orig, pending, removed}, elec:{...}}
+let PH = {water:{}, elec:{}};
+const PHOTO_CACHE = {};
+const PH_LABEL = {water:'มิเตอร์น้ำ', elec:'มิเตอร์ไฟ'};
+function initPhotos(b){ PH = {water:{orig:(b && b.waterPhoto) || ''}, elec:{orig:(b && b.elecPhoto) || ''}}; }
+function getPhoto(v){
+  if(!v) return Promise.resolve('');
+  if(String(v).startsWith('data:')) return Promise.resolve(v);
+  if(!PHOTO_CACHE[v]) PHOTO_CACHE[v] = api('GetImage', v).catch(() => { delete PHOTO_CACHE[v]; return ''; });
+  return PHOTO_CACHE[v];
+}
+function hydratePhotos(root){
+  return Promise.all(Array.from((root || document).querySelectorAll('img[data-photo]')).map(img => {
+    if(img.getAttribute('src')) return Promise.resolve();
+    return getPhoto(img.dataset.photo).then(src => { if(src){ img.src = src; return img.decode ? img.decode().catch(()=>{}) : null; } img.classList.add('ph-missing'); });
+  }));
+}
+function photoSlot(k){
+  const p = PH[k], cur = p.pending || (p.removed ? '' : p.orig);
+  if(cur) return `<div class="ph"><img ${cur.startsWith('data:') ? `src="${cur}"` : `data-photo="${esc(cur)}"`} alt="${PH_LABEL[k]}" onclick="viewPhoto(this.src)">
+    <button type="button" class="ph-del" title="ลบรูป" onclick="removePhoto('${k}')">${ic('x')}</button><span class="ph-cap">${PH_LABEL[k]}</span></div>`;
+  return `<label class="ph-add"><input type="file" accept="image/&#42;" class="hide" onchange="pickPhoto('${k}', this)">${ic('camera')}<span>แนบรูป${PH_LABEL[k]}</span></label>`;
+}
+const photoBox = k => `<div class="ph-wrap" id="ph-${k}">${photoSlot(k)}</div>`;
+function redrawPhoto(k){ const el = $('#ph-' + k); if(el){ el.innerHTML = photoSlot(k); hydratePhotos(el); } }
+async function pickPhoto(k, input){
+  const f = input.files && input.files[0]; if(!f) return;
+  if(!/^image\//.test(f.type)) return toast('กรุณาเลือกไฟล์รูปภาพ', 'bad');
+  try { PH[k].pending = await resizeJPEG(f, 1280, .72); PH[k].removed = false; redrawPhoto(k); }
+  catch(e){ toast('อ่านรูปไม่สำเร็จ', 'bad'); }
+}
+function removePhoto(k){ PH[k].pending = null; PH[k].removed = true; redrawPhoto(k); }
+function resizeJPEG(file, max, q){
+  return new Promise((res, rej) => { const fr = new FileReader(); fr.onerror = rej;
+    fr.onload = () => { const img = new Image(); img.onerror = rej;
+      img.onload = () => { const s = Math.min(1, max/Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.round(img.width*s); c.height = Math.round(img.height*s); const x = c.getContext('2d');
+        x.fillStyle = '#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', q)); };
+      img.src = fr.result; };
+    fr.readAsDataURL(file); });
+}
+// อัปโหลดรูปที่เลือกใหม่ / ลบรูปที่เอาออก แล้วคืนค่าที่จะเก็บในบิล
+async function commitPhoto(k, skip, name){
+  const p = PH[k], old = p.orig || '';
+  const drop = () => { if(old && !old.startsWith('data:')) api('DeletePhoto', old).catch(()=>{}); };
+  if(skip){ drop(); return ''; }
+  if(p.pending){ const id = await call('UploadPhoto', p.pending, name + '-' + k, old.startsWith('data:') ? '' : old); PHOTO_CACHE[id] = Promise.resolve(p.pending); return id; }
+  if(p.removed){ drop(); return ''; }
+  return old;
+}
+function viewPhoto(src){ if(!src) return; $('#lightboxImg').src = src; $('#lightbox').classList.add('show'); }
+function closePhoto(){ $('#lightbox').classList.remove('show'); $('#lightboxImg').removeAttribute('src'); }
+
+/* ---------- บิลแรกเข้า ---------- */
+const MOVEIN_PRESETS = ['ค่าทำสัญญา','ค่าคีย์การ์ด/กุญแจ','ค่าทำความสะอาด','ค่าติดตั้งอินเทอร์เน็ต','ค่าส่วนกลางเดือนแรก'];
+let MF = null;
+function openMoveInForm(tenantId, billId){
+  const t = DB.tenants.find(x => x.id === tenantId);
+  const ex = billId ? DB.bills.find(b => b.id === billId) : moveInBillOf(tenantId);
+  const room = roomById(ex ? ex.roomId : t && t.roomId);
+  if(!room){ toast('ไม่พบห้องของผู้เช่า', 'bad'); return; }
+  const rw = roomWater(room), prev = lastBillBefore(room.id, '9999-12');
+  const b = ex ? Object.assign({}, ex) : {moveInDate: (t && t.startDate) || todayStr(), advMonths:'1', rent: room.price, deposit: (t && t.deposit) || '',
+    waterMode: rw.mode, waterCurr: prev && prev.waterMode !== 'flat' ? prev.waterCurr : '', elecCurr: prev ? prev.elecCurr : '',
+    extras: [], discount:'0', note:'', dueDate: (t && t.startDate) || todayStr()};
+  const adv = ex ? n(b.advMonths) : 1, rentPer = ex && adv ? n(b.rent)/adv : n(room.price);
+  MF = {tenant: ex ? {id:ex.tenantId, name:ex.tenantName} : t, room, ex};
+  initPhotos(ex);
+  const flat = b.waterMode === 'flat';
+  openModal({title: (ex ? 'แก้ไขบิลแรกเข้า' : 'ออกบิลแรกเข้า') + ' · ห้อง ' + room.number, size:'lg',
+    body:`<div class="bill-info"><div><div class="k">ห้อง</div><div class="v">${esc(room.number)}</div></div><div><div class="k">ผู้เช่า</div><div class="v">${esc(MF.tenant.name)}</div></div><div><div class="k">ประเภท</div><div class="v">บิลแรกเข้า</div></div></div>
+    <form id="miForm" onsubmit="return false" oninput="updateMoveInSum()">
+      <div class="form-grid">${field('วันที่เข้าพัก', `<input type="date" name="moveInDate" value="${esc(b.moveInDate)}">`)}${field('ครบกำหนดชำระ', `<input type="date" name="dueDate" value="${esc(b.dueDate)}">`)}</div>
+      <div class="meter"><div class="meter-t"><span class="sw" style="background:var(--brown)"></span>ค่าเช่าล่วงหน้า & เงินประกัน</div>
+        <div class="form-grid c3">
+          ${field('ล่วงหน้า (เดือน)', `<select name="advMonths" onchange="miAdv()">${opts([0,1,2,3,4,5,6].map(x=>[String(x), x?x+' เดือน':'ไม่เก็บ']), String(adv))}</select>`)}
+          ${field('ค่าเช่า/เดือน', numIn('rentPer', rentPer, 'oninput="miAdv()"'))}
+          ${field('รวมค่าเช่าล่วงหน้า', numIn('rent', b.rent))}
+        </div>
+        <div class="form-grid" style="margin-top:12px">${field('เงินประกันห้อง (บาท)', numIn('deposit', b.deposit) + '<div class="hint">คืนเมื่อย้ายออกตามเงื่อนไข — ไม่นับเป็นรายได้ในรายงาน</div>', 'full')}</div>
+      </div>
+      <div class="meter"><div class="meter-t"><span class="sw" style="background:#D9A441"></span>เลขมิเตอร์เริ่มต้น (วันเข้าพัก)</div>
+        <div class="form-grid">
+          ${flat ? field('มิเตอร์น้ำ', '<input value="ห้องนี้คิดค่าน้ำเหมาจ่าย — ไม่ต้องจด" readonly>') : field('มิเตอร์น้ำ', numIn('waterCurr', b.waterCurr, 'placeholder="จดเลขมิเตอร์"'))}
+          ${field('มิเตอร์ไฟ', numIn('elecCurr', b.elecCurr, 'placeholder="จดเลขมิเตอร์"'))}
+          ${flat ? '<div></div>' : photoBox('water')}${photoBox('elec')}
+        </div><div class="hint">ระบบจะใช้เป็น "เลขครั้งก่อน" ของบิลเดือนแรกให้อัตโนมัติ</div>
+      </div>
+      <div class="meter extra-box"><div class="meter-t"><span class="sw" style="background:var(--bad)"></span>ค่าใช้จ่ายแรกเข้าอื่น ๆ</div>
+        <div class="chips" style="margin-bottom:10px">${MOVEIN_PRESETS.map(p => `<button type="button" class="chip" onclick="addExtraRow({name:'${p}'})">+ ${p}</button>`).join('')}<button type="button" class="chip" onclick="addExtraRow()">+ รายการอื่น</button></div>
+        <div id="exRows">${parseExtras(b.extras).map(extraRow).join('')}</div>
+      </div>
+      <div class="form-grid" style="margin-top:14px">${field('ส่วนลด (บาท)', numIn('discount', b.discount))}${field('หมายเหตุ', txtIn('note', b.note, 'placeholder="(ถ้ามี) แสดงบนบิล"'))}</div>
+    </form>
+    <div class="bill-sum" id="billSum"></div>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="miSave" onclick="saveMoveIn()">${ic('check')}บันทึกบิลแรกเข้า</button>`});
+  updateMoveInSum(); hydratePhotos($('#modalBody'));
+}
+function miAdv(){ const f = $('#miForm'); f.rent.value = n(f.advMonths.value) * n(f.rentPer.value); updateMoveInSum(); }
+function readMoveInForm(){ const o = formObj($('#miForm')); o.extras = readExtras(); return o; }
+function calcMoveIn(o){ const ext = sum(o.extras, 'amount'); return {ext, total: Math.round((n(o.rent) + n(o.deposit) + ext - n(o.discount))*100)/100}; }
+function updateMoveInSum(){
+  const o = readMoveInForm(), c = calcMoveIn(o);
+  $('#billSum').innerHTML = `<div class="ln"><span>ค่าเช่าล่วงหน้า${n(o.advMonths)?' ('+o.advMonths+' เดือน)':''}</span><span>${baht(o.rent)}</span></div><div class="ln"><span>เงินประกันห้อง</span><span>${baht(o.deposit)}</span></div>
+    ${c.ext?`<div class="ln"><span>ค่าใช้จ่ายอื่น ๆ</span><span>${baht(c.ext)}</span></div>`:''}${n(o.discount)?`<div class="ln"><span>ส่วนลด</span><span>-${baht(o.discount)}</span></div>`:''}
+    <div class="tt"><span>รวมที่ต้องชำระแรกเข้า</span><span class="v">${baht(c.total)}</span></div>`;
+}
+async function saveMoveIn(){
+  const o = readMoveInForm(), c = calcMoveIn(o), {room, ex, tenant} = MF, flat = !('waterCurr' in o);
+  if(!o.moveInDate) return toast('กรุณาระบุวันที่เข้าพัก', 'bad');
+  if((!flat && o.waterCurr === '') || o.elecCurr === ''){ if(!await confirmBox('ยังไม่ได้จดเลขมิเตอร์เริ่มต้นครบ (บิลเดือนแรกจะไม่มีเลขครั้งก่อน) ต้องการบันทึกต่อหรือไม่?')) return; }
+  const rec = Object.assign(ex ? {id:ex.id, status:ex.status} : {status:'unpaid'}, {
+    billType:'movein', billNo: ex && ex.billNo ? ex.billNo : 'MI' + o.moveInDate.replace(/-/g,'') + '-' + room.number,
+    month: o.moveInDate.slice(0,7), moveInDate: o.moveInDate, roomId: room.id, roomNumber: room.number, tenantId: tenant.id, tenantName: tenant.name,
+    rent: String(n(o.rent)), advMonths: o.advMonths, deposit: String(n(o.deposit)),
+    waterMode: flat ? 'flat' : 'unit', waterFlat:'', waterPrev: flat ? '' : o.waterCurr, waterCurr: flat ? '' : o.waterCurr, waterRate:'', waterAmt:'0',
+    elecPrev: o.elecCurr, elecCurr: o.elecCurr, elecRate:'', elecAmt:'0',
+    extras: JSON.stringify(o.extras), discount: String(n(o.discount)), total: String(c.total), dueDate: o.dueDate, note: o.note});
+  const btn = $('#miSave'); btn.disabled = true;
+  try {
+    rec.waterPhoto = await commitPhoto('water', flat, rec.billNo);
+    rec.elecPhoto = await commitPhoto('elec', false, rec.billNo);
+    const r = await saveRec('Bills', rec);
+    const t = DB.tenants.find(x => x.id === tenant.id);
+    if(t && n(t.deposit) !== n(rec.deposit)) await saveRec('Tenants', {id:t.id, deposit:rec.deposit});
+    toast('บันทึกบิลแรกเข้าเรียบร้อย'); render(); openInvoice(r.id);
+  } catch(e){} finally { btn.disabled = false; }
+}
+function openMoveInPicker(){
+  const list = DB.tenants.filter(t => t.status !== 'moved').sort((a,b) => String((roomById(a.roomId)||{}).number||'').localeCompare(String((roomById(b.roomId)||{}).number||''), 'th', {numeric:true}));
+  openModal({title:'บิลแรกเข้า — เลือกผู้เช่า', body: list.length ? `<p class="sm muted" style="margin-top:0">บิลที่ผู้เช่าจ่ายวันเข้าพัก: ค่าเช่าล่วงหน้า เงินประกัน ค่าทำสัญญา ฯลฯ พร้อมจดมิเตอร์เริ่มต้น</p><div class="list">${list.map(t => { const mb = moveInBillOf(t.id), bs = billState(mb);
+    return `<div class="row" style="cursor:pointer" onclick="${mb ? `openInvoice('${mb.id}')` : `closeModal();openMoveInForm('${t.id}')`}">
+      <div class="avatar">${esc((roomById(t.roomId)||{}).number||'-')}</div>
+      <div class="main"><div class="t">${esc(t.name)}</div><div class="s">เข้าพัก ${dateTH(t.startDate)}</div></div>
+      ${mb ? `<div style="text-align:right"><div class="amt">${baht(mb.total)}</div><span class="badge ${bs.cls}">${bs.label}</span></div>` : `<span class="btn btn-sm btn-primary">${ic('plus')}ออกบิล</span>`}</div>`; }).join('')}</div>`
+    : emptyBox('users', 'ยังไม่มีผู้เช่า', `<button class="btn btn-primary" onclick="closeModal();openTenantForm()">${ic('plus')}เพิ่มผู้เช่า</button>`)});
+}
+
+function openPay(id){
+  const b = DB.bills.find(x => x.id === id);
+  openModal({title:'รับชำระเงิน · ห้อง ' + b.roomNumber, size:'sm',
+    body:`<div class="bill-info"><div><div class="k">${billLabel(b)}</div><div class="v">${esc(b.tenantName)}</div></div><div><div class="k">ยอดชำระ</div><div class="v" style="font-size:20px">${baht(b.total)}</div></div></div>
+      <form id="payForm" onsubmit="return false" class="form-grid">
+        ${field('วันที่ชำระ', `<input type="date" name="paidDate" value="${todayStr()}">`)}
+        ${field('ช่องทาง', `<select name="paidMethod">${opts(PAY_METHODS, 'โอนเงิน')}</select>`)}
+      </form>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-ok" id="payBtn" onclick="confirmPay('${id}')">${ic('check')}ยืนยันรับเงิน</button>`});
+}
+async function confirmPay(id){
+  const f = formObj($('#payForm')); $('#payBtn').disabled = true;
+  try { await saveRec('Bills', {id, status:'paid', paidDate:f.paidDate, paidMethod:f.paidMethod}); toast('บันทึกการรับชำระแล้ว'); closeModal(); render(); }
+  catch(e){ $('#payBtn').disabled = false; }
+}
+async function unpay(id){
+  if(!await confirmBox('ยกเลิกสถานะ "ชำระแล้ว" ของบิลนี้?')) return;
+  try { await saveRec('Bills', {id, status:'unpaid', paidDate:'', paidMethod:''}); toast('ยกเลิกการชำระแล้ว'); closeModal(); render(); } catch(e){}
+}
+async function deleteBill(id){
+  if(!await confirmBox('ลบบิลนี้ถาวร? ไม่สามารถกู้คืนได้', {danger:true, yes:'ลบบิล'})) return;
+  const b = DB.bills.find(x => x.id === id) || {};
+  try { await delRec('Bills', id);
+    [b.waterPhoto, b.elecPhoto].filter(v => v && !String(v).startsWith('data:')).forEach(v => api('DeletePhoto', v).catch(()=>{}));
+    toast('ลบบิลแล้ว'); closeModal(); render(); } catch(e){}
+}
+
+/* ---------- ใบแจ้งหนี้ / ใบเสร็จ ---------- */
+function invoiceHTML(b){
+  const s = S(), paid = b.status === 'paid', ext = parseExtras(b.extras), flat = b.waterMode === 'flat';
+  const wu = Math.max(0, n(b.waterCurr)-n(b.waterPrev)), eu = Math.max(0, n(b.elecCurr)-n(b.elecPrev));
+  let no = 0;
+  const line = (t, d, a) => `<tr><td>${++no}</td><td>${t}</td><td class="d">${d||''}</td><td class="r">${fmt(a)}</td></tr>`;
+  const hasBank = s.accountNo || s.promptPay || s.qrImage;
+  const waterDetail = flat ? 'เหมาจ่ายรายเดือน' : `มิเตอร์ ${fmt(b.waterPrev)} → ${fmt(b.waterCurr)} = ${fmt(wu)} หน่วย × ${fmt(b.waterRate)} บาท${n(b.waterAmt) > wu*n(b.waterRate)+0.001 ? ' (คิดขั้นต่ำ)' : ''}`;
+  const mi = isMI(b), adv = n(b.advMonths);
+  const docType = paid ? 'ใบเสร็จรับเงิน' : mi ? 'ใบแจ้งค่าแรกเข้า' : 'ใบแจ้งค่าเช่า';
+  const docEn = (mi ? 'MOVE-IN ' : '') + (paid ? 'RECEIPT' : 'INVOICE');
+  const items = mi ? `
+      ${n(b.rent) ? line('ค่าเช่าล่วงหน้า', adv ? `${adv} เดือน × ${fmt(n(b.rent)/adv)} บาท` : '', b.rent) : ''}
+      ${n(b.deposit) ? line('เงินประกันห้อง', 'คืนเมื่อสิ้นสุดสัญญาตามเงื่อนไข', b.deposit) : ''}
+      ${ext.length ? `<tr class="sec"><td></td><td colspan="3">ค่าใช้จ่ายแรกเข้าอื่น ๆ</td></tr>` + ext.map(e => line(esc(e.name||'อื่น ๆ'), esc(e.detail||''), e.amount)).join('') : ''}`
+  : `
+      ${line('ค่าเช่าห้อง', 'ประจำเดือน' + monthTH(b.month), b.rent)}
+      ${line('ค่าน้ำประปา' + (flat ? ' (เหมาจ่าย)' : ''), waterDetail, b.waterAmt)}
+      ${line('ค่าไฟฟ้า', `มิเตอร์ ${fmt(b.elecPrev)} → ${fmt(b.elecCurr)} = ${fmt(eu)} หน่วย × ${fmt(b.elecRate)} บาท`, b.elecAmt)}
+      ${ext.length ? `<tr class="sec"><td></td><td colspan="3">ค่าใช้จ่ายอื่น ๆ</td></tr>` + ext.map(e => line(esc(e.name||'อื่น ๆ'), esc(e.detail||''), e.amount)).join('') : ''}`;
+  return `<div class="invoice" id="invoice">
+    <div class="inv-top">
+      <div class="inv-org"><div class="inv-logo">${ic('home')}</div><div><div class="inv-brand">${esc(s.systemName||'')}</div><div class="inv-sub">${esc(s.address||'')}${s.phone?'<br>โทร '+esc(s.phone):''}</div></div></div>
+      <div class="inv-doc"><div class="inv-type">${docType}</div><div class="inv-type-en">${docEn}</div>${mi&&paid?'<div class="inv-type-en" style="letter-spacing:0;font-size:12.5px">(ค่าแรกเข้า)</div>':''}</div>
+    </div>
+    <div class="inv-meta">
+      <div class="inv-box"><div class="k">ผู้เช่า</div><div class="v">${esc(b.tenantName)}</div><div class="k" style="margin-top:6px">ห้องพัก</div><div class="v">ห้อง ${esc(b.roomNumber)}</div></div>
+      <div class="inv-box"><table class="inv-kv">
+        <tr><td>เลขที่เอกสาร</td><td>${esc(b.billNo||'-')}</td></tr>
+        ${mi ? `<tr><td>วันที่เข้าพัก</td><td>${dateTH(b.moveInDate)}</td></tr>` : `<tr><td>รอบบิล</td><td>${monthTH(b.month)}</td></tr>`}
+        <tr><td>วันที่ออกบิล</td><td>${dateTH((b.createdAt||todayStr()).slice(0,10))}</td></tr>
+        <tr><td>ครบกำหนดชำระ</td><td>${dateTH(b.dueDate)}</td></tr>
+        ${paid?`<tr><td>วันที่ชำระ</td><td>${dateTH(b.paidDate)}${b.paidMethod?' ('+esc(b.paidMethod)+')':''}</td></tr>`:''}
+      </table></div>
+    </div>
+    <table class="inv-tbl"><thead><tr><th>#</th><th>รายการ</th><th>รายละเอียด</th><th class="r">จำนวนเงิน (บาท)</th></tr></thead><tbody>
+      ${items}
+      ${n(b.discount) ? line('ส่วนลด', '', -n(b.discount)) : ''}
+    </tbody></table>
+    <div class="inv-total"><span>รวมเงินที่ต้องชำระทั้งสิ้น</span><span class="v">${baht(b.total)}</span></div>
+    <div class="inv-words">(${bahtText(b.total)})</div>
+    ${mi ? `<div class="inv-pay" style="margin-top:16px;padding:12px 18px"><div><div class="ttl">เลขมิเตอร์ ณ วันเข้าพัก</div><div class="kv"><span class="k">มิเตอร์น้ำ</span><b>${flat ? 'เหมาจ่ายรายเดือน' : (b.waterCurr !== '' ? fmt(b.waterCurr) : '-')}</b><span class="k">มิเตอร์ไฟ</span><b>${b.elecCurr !== '' ? fmt(b.elecCurr) : '-'}</b></div></div></div>` : ''}
+    ${b.note ? `<div class="inv-note"><b>หมายเหตุ:</b> ${esc(b.note)}</div>` : ''}
+    ${(() => {
+      // แถวล่าง: กล่องชำระเงิน + รูปมิเตอร์ (วางข้างกันเพื่อให้พอดีหน้า A4)
+      const ph = [!flat && b.waterPhoto ? ['มิเตอร์น้ำ', b.waterPhoto, b.waterCurr] : null, b.elecPhoto ? ['มิเตอร์ไฟ', b.elecPhoto, b.elecCurr] : null].filter(Boolean);
+      const photos = ph.length ? `<div class="inv-photos">${ph.map(([l, v, r]) => `<figure><img ${String(v).startsWith('data:') ? `src="${v}"` : `data-photo="${esc(v)}"`} alt="${l}" onclick="viewPhoto(this.src)"><figcaption>${l}${r !== '' && r != null ? ' · ' + fmt(r) : ''}</figcaption></figure>`).join('')}</div>` : '';
+      const pay = paid ? `<div class="inv-pay" style="justify-content:space-between"><div><div class="ttl">ได้รับชำระเงินเรียบร้อยแล้ว</div><div class="kv"><span class="k">วันที่ชำระ</span><b>${dateTH(b.paidDate)}</b><span class="k">ช่องทาง</span><b>${esc(b.paidMethod||'-')}</b><span class="k">จำนวนเงิน</span><b>${baht(b.total)}</b></div></div>
+        <div class="stamp">ชำระแล้ว<small>PAID</small></div></div>`
+        : hasBank ? `<div class="inv-pay">${s.qrImage?`<img src="${s.qrImage}" alt="QR">`:''}
+        <div><div class="ttl">ช่องทางการชำระเงิน</div><div class="kv"><span class="k">ธนาคาร</span><b>${esc(s.bankName||'-')}</b><span class="k">ชื่อบัญชี</span><b>${esc(s.accountName||'-')}</b>
+        ${s.accountNo?`<span class="k">เลขที่บัญชี</span><b style="font-size:17px">${esc(s.accountNo)}</b>`:''}${s.promptPay?`<span class="k">พร้อมเพย์</span><b>${esc(s.promptPay)}</b>`:''}</div></div></div>` : '';
+      return pay || photos ? `<div class="inv-row ${photos ? 'has-ph' : ''}">${pay}${photos}</div>` : '';
+    })()}
+    <div class="inv-note">${esc(paid ? 'ได้รับเงินเรียบร้อยแล้ว ขอบคุณค่ะ' : (s.invoiceNote||''))}</div>
+    <div class="inv-sign">
+      <div><div class="line">${s.signImage && (s.signMode||'all') !== 'none' && ((s.signMode||'all') === 'all' || paid) ? `<img class="sig-img" src="${s.signImage}" alt="">` : ''}</div>${paid?'ผู้รับเงิน':'ผู้ให้เช่า'}<br><small>(${esc(s.ownerName||'..............................')})</small></div>
+      <div><div class="line"></div>ผู้เช่า<br><small>(${esc(b.tenantName)})</small></div>
+    </div>
+    <div class="inv-foot">${esc(s.systemName||'')}${s.phone?' · โทร '+esc(s.phone):''}</div>
+  </div>`;
+}
+function fitInvoice(){
+  const st = $('#invStage'), sc = $('#invScale'), inv = $('#invoice'); if(!st || !sc || !inv) return;
+  if(st.clientWidth < 100) return setTimeout(fitInvoice, 60);
+  const s = Math.min(1, (st.clientWidth - 32) / 794);
+  sc.style.transform = `scale(${s})`; st.style.height = (inv.offsetHeight * s + 32) + 'px';
+}
+window.addEventListener('resize', fitInvoice);
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(fitInvoice);
+function openInvoice(id){
+  const b = DB.bills.find(x => x.id === id); if(!b) return;
+  const paid = b.status === 'paid';
+  setTimeout(() => { fitInvoice(); hydratePhotos($('#invoice')).then(fitInvoice); }, 0);
+  const mi = isMI(b);
+  openModal({title:(paid?'ใบเสร็จ':mi?'ใบแจ้งค่าแรกเข้า':'ใบแจ้งค่าเช่า') + ' (A4) · ห้อง ' + b.roomNumber, size:'xl', body: `<div class="inv-stage" id="invStage"><div class="inv-scale" id="invScale">${invoiceHTML(b)}</div></div>`,
+    foot:`<button class="btn btn-danger btn-sm" onclick="deleteBill('${id}')">${ic('trash')}ลบ</button>
+      <button class="btn btn-sm" onclick="closeModal();${mi ? `openMoveInForm('${b.tenantId}','${id}')` : `openBillForm('${b.roomId}','${b.month}','${id}')`}">${ic('edit')}แก้ไข</button>
+      <div style="flex:1"></div>
+      ${paid?`<button class="btn" onclick="unpay('${id}')">ยกเลิกชำระ</button>`:`<button class="btn btn-ok" onclick="openPay('${id}')">${ic('check')}รับชำระ</button>`}
+      ${HOSTED ? '' : `<button class="btn" onclick="window.print()">${ic('print')}พิมพ์</button>`}
+      <button class="btn btn-primary" id="imgBtn" onclick="invoiceImage('${id}')">${ic('share')}บันทึกรูป/ส่ง</button>`});
+}
+function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+async function invoiceImage(id){
+  const b = DB.bills.find(x => x.id === id), btn = $('#imgBtn'); btn.disabled = true; busy(true);
+  try {
+    if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    await hydratePhotos($('#invoice'));
+    // จับภาพจากสำเนาขนาด A4 จริง (ไม่ถูกย่อ)
+    const holder = document.createElement('div');
+    holder.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;background:#fff';
+    const clone = $('#invoice').cloneNode(true); clone.removeAttribute('id'); clone.style.boxShadow = 'none';
+    holder.appendChild(clone); document.body.appendChild(holder);
+    let canvas;
+    try { canvas = await html2canvas(clone, {scale:2, backgroundColor:'#ffffff', useCORS:true, width:794, windowWidth:1200}); }
+    finally { holder.remove(); }
+    const url = canvas.toDataURL('image/png'), name = (b.billNo || 'invoice') + '.png';
+    try {
+      const blob = await (await fetch(url)).blob(), file = new File([blob], name, {type:'image/png'});
+      if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:name}); return; }
+    } catch(e){ if(e && e.name === 'AbortError') return; }
+    openModal({title:'รูปใบแจ้งค่าเช่า', body:`<p class="sm muted" style="margin-top:0">บนมือถือ: กดค้างที่รูปเพื่อบันทึก หรือแชร์ไปยัง LINE</p><img src="${url}" style="width:100%;border-radius:12px;border:1px solid var(--line)">`,
+      foot:`<button class="btn" onclick="openInvoice('${id}')">กลับ</button>${HOSTED ? '' : `<a class="btn btn-primary" href="${url}" download="${esc(name)}">${ic('download')}ดาวน์โหลด</a>`}`});
+  } catch(e){ toast('สร้างรูปไม่สำเร็จ ลองใช้ปุ่มพิมพ์แทน', 'bad'); }
+  finally { busy(false); if(btn) btn.disabled = false; }
+}
+
+/* ---------- จัดการห้องพัก ---------- */
+let RF = {q:'', st:'all'};
+VIEWS.rooms = () => {
+  const cnt = k => DB.rooms.filter(r => k==='all' || roomStatus(r)===k).length;
+  return `<div class="toolbar">
+    <div class="search">${ic('search')}<input placeholder="ค้นหาเลขห้อง / ประเภท / ผู้เช่า" value="${esc(RF.q)}" oninput="RF.q=this.value;renderRoomList()"></div>
+    <div class="grow"></div>
+    <button class="btn" onclick="openBulkRooms()">${ic('plus')}เพิ่มหลายห้อง</button>
+    <button class="btn btn-primary" onclick="openRoomForm()">${ic('plus')}เพิ่มห้อง</button>
+  </div>
+  <div class="chips" style="margin-bottom:16px">${[['all','ทั้งหมด'],...Object.entries(ROOM_ST).map(([k,v])=>[k,v.label])].map(([k,l]) => `<button class="chip ${RF.st===k?'active':''}" onclick="RF.st='${k}';render()">${l}<span class="c">${cnt(k)}</span></button>`).join('')}</div>
+  <div id="roomList"></div>`;
+};
+AFTER.rooms = () => renderRoomList();
+function renderRoomList(){
+  const q = RF.q.trim().toLowerCase();
+  const list = sortRooms(DB.rooms).filter(r => (RF.st==='all' || roomStatus(r)===RF.st) &&
+    (!q || [r.number, r.type, r.floor, (tenantOf(r.id)||{}).name].join(' ').toLowerCase().includes(q)));
+  $('#roomList').innerHTML = !list.length ? `<div class="card">${emptyBox('door', DB.rooms.length ? 'ไม่พบห้องที่ค้นหา' : 'ยังไม่มีห้องพัก', DB.rooms.length?'':`<button class="btn btn-primary" onclick="openBulkRooms()">${ic('plus')}เพิ่มห้องพัก</button>`)}</div>` :
+  `<div class="grid auto">${list.map(r => { const st = roomStatus(r), t = tenantOf(r.id);
+    return `<div class="room-card st-${st}">
+      <div class="top"><div><div class="room-no">${esc(r.number)}</div><div class="meta">${esc(r.type||'-')}${r.floor?' · ชั้น '+esc(r.floor):''}</div></div><span class="badge ${ROOM_ST[st].cls}">${ROOM_ST[st].label}</span></div>
+      <div class="price">${baht(r.price)} <span class="meta">/ เดือน${roomWater(r).mode==='flat'?' · น้ำเหมาจ่าย '+baht(roomWater(r).flat):''}</span></div>
+      <div class="tn">${t ? ic('users','style="width:15px;height:15px;color:var(--muted)"') + esc(t.name) : `<span class="meta">${esc(r.note||'—')}</span>`}</div>
+      <div class="acts">
+        ${t ? `<button class="btn btn-sm" onclick="openTenantForm('${t.id}')">ผู้เช่า</button>` : st==='vacant'||st==='reserved' ? `<button class="btn btn-sm btn-soft" onclick="openTenantForm(null,'${r.id}')">${ic('plus')}ผู้เช่า</button>` : ''}
+        <button class="btn-icon" title="แก้ไข" onclick="openRoomForm('${r.id}')">${ic('edit')}</button>
+        <button class="btn-icon" title="ลบ" onclick="deleteRoom('${r.id}')">${ic('trash')}</button>
+      </div></div>`; }).join('')}</div>`;
+}
+const ROOM_TYPES = ['ห้องพัดลม','ห้องแอร์','ห้องสตูดิโอ','1 ห้องนอน','2 ห้องนอน','บ้านเช่า'];
+function openRoomForm(id){
+  const r = id ? roomById(id) : {number:'', floor:'', type:'', price:'', status:'vacant', note:''};
+  const occ = id && tenantOf(id);
+  openModal({title: id ? 'แก้ไขห้อง ' + r.number : 'เพิ่มห้องพัก',
+    body:`<form id="roomForm" class="form-grid" onsubmit="return false">
+      ${field('เลขห้อง <span class="req">*</span>', txtIn('number', r.number, 'placeholder="เช่น 101" required'))}
+      ${field('ชั้น', txtIn('floor', r.floor))}
+      ${field('ประเภทห้อง', txtIn('type', r.type, 'list="roomTypes" placeholder="เลือกหรือพิมพ์"') + `<datalist id="roomTypes">${ROOM_TYPES.map(x=>`<option value="${x}">`).join('')}</datalist>`)}
+      ${field('ค่าเช่า/เดือน (บาท) <span class="req">*</span>', numIn('price', r.price))}
+      ${field('การคิดค่าน้ำของห้องนี้', `<select name="waterMode">${opts([['','ตามค่าตั้งต้นของระบบ ('+(S().waterMode==='flat'?'เหมาจ่าย':'ตามหน่วย')+')'],['unit','ตามหน่วยมิเตอร์'],['flat','เหมาจ่ายรายเดือน']], r.waterMode||'')}</select>`)}
+      ${field('ค่าน้ำเหมาจ่าย (บาท/เดือน)', numIn('waterFlat', r.waterFlat||'', 'placeholder="ว่าง = ใช้ค่าตั้งต้น ('+fmt(S().waterFlat)+')"'))}
+      ${field('สถานะห้อง', occ ? `<input value="มีผู้เช่า (${esc(occ.name)})" readonly><input type="hidden" name="status" value="${esc(r.status||'vacant')}">` : `<select name="status">${opts([['vacant','ว่าง'],['reserved','จองแล้ว'],['maintenance','ปิดปรับปรุง']], r.status)}</select>`, 'full')}
+      ${field('หมายเหตุ / สิ่งอำนวยความสะดวก', `<textarea name="note">${esc(r.note)}</textarea>`, 'full')}
+    </form>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="roomSave" onclick="saveRoom('${id||''}')">${ic('check')}บันทึก</button>`});
+}
+async function saveRoom(id){
+  const o = formObj($('#roomForm'));
+  if(!o.number) return toast('กรุณากรอกเลขห้อง', 'bad');
+  if(DB.rooms.some(r => r.number === o.number && r.id !== id)) return toast('เลขห้องนี้มีอยู่แล้ว', 'bad');
+  if(id) o.id = id;
+  $('#roomSave').disabled = true;
+  try { await saveRec('Rooms', o); toast('บันทึกห้องแล้ว'); closeModal(); render(); } catch(e){ $('#roomSave').disabled = false; }
+}
+async function deleteRoom(id){
+  if(tenantOf(id)) return toast('ห้องนี้มีผู้เช่าอยู่ กรุณาย้ายผู้เช่าออกก่อน', 'bad');
+  const r = roomById(id);
+  if(!await confirmBox(`ลบห้อง <b>${esc(r.number)}</b>? (ประวัติบิลเดิมยังคงอยู่)`, {danger:true, yes:'ลบห้อง'})) return;
+  try { await delRec('Rooms', id); toast('ลบห้องแล้ว'); render(); } catch(e){}
+}
+function openBulkRooms(){
+  openModal({title:'เพิ่มห้องพักทีละหลายห้อง',
+    body:`<p class="sm muted" style="margin-top:0">ระบบจะสร้างห้องตามช่วงเลขที่กำหนด เช่น 101 ถึง 110 (ข้ามเลขห้องที่มีอยู่แล้ว)</p>
+    <form id="bulkForm" class="form-grid" onsubmit="return false">
+      ${field('เลขห้องเริ่มต้น', numIn('from', '101'))}${field('ถึงเลขห้อง', numIn('to', '110'))}
+      ${field('ชั้น', txtIn('floor', '1'))}${field('ประเภทห้อง', txtIn('type', 'ห้องพัดลม', 'list="roomTypes2"') + `<datalist id="roomTypes2">${ROOM_TYPES.map(x=>`<option value="${x}">`).join('')}</datalist>`)}
+      ${field('ค่าเช่า/เดือน (บาท)', numIn('price', '3000'), 'full')}
+    </form>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="bulkSave" onclick="saveBulkRooms()">${ic('check')}สร้างห้อง</button>`});
+}
+async function saveBulkRooms(){
+  const o = formObj($('#bulkForm')), a = parseInt(o.from), b = parseInt(o.to);
+  if(isNaN(a) || isNaN(b) || b < a) return toast('ช่วงเลขห้องไม่ถูกต้อง', 'bad');
+  if(b - a > 100) return toast('สร้างได้ครั้งละไม่เกิน 100 ห้อง', 'bad');
+  const exist = new Set(DB.rooms.map(r => r.number)), list = [];
+  for(let i=a;i<=b;i++){ if(!exist.has(String(i))) list.push({number:String(i), floor:o.floor, type:o.type, price:o.price, status:'vacant', note:''}); }
+  if(!list.length) return toast('ห้องทั้งหมดมีอยู่แล้ว', 'bad');
+  $('#bulkSave').disabled = true;
+  try { const rs = await call('SaveMany', 'Rooms', list); rs.forEach(r => upsertLocal('Rooms', r)); toast(`เพิ่ม ${rs.length} ห้องเรียบร้อย`); closeModal(); render(); }
+  catch(e){ $('#bulkSave').disabled = false; }
+}
+
+/* ---------- ข้อมูลผู้เช่า ---------- */
+let TF = {q:'', tab:'active'};
+VIEWS.tenants = () => {
+  const a = DB.tenants.filter(t => t.status !== 'moved').length, m = DB.tenants.length - a;
+  return `<div class="toolbar">
+    <div class="search">${ic('search')}<input placeholder="ค้นหาชื่อ / เบอร์โทร / ห้อง" value="${esc(TF.q)}" oninput="TF.q=this.value;renderTenantList()"></div>
+    <div class="grow"></div><button class="btn btn-primary" onclick="openTenantForm()">${ic('plus')}เพิ่มผู้เช่า</button></div>
+  <div class="chips" style="margin-bottom:16px"><button class="chip ${TF.tab==='active'?'active':''}" onclick="TF.tab='active';render()">กำลังเช่า<span class="c">${a}</span></button><button class="chip ${TF.tab==='moved'?'active':''}" onclick="TF.tab='moved';render()">ย้ายออกแล้ว<span class="c">${m}</span></button></div>
+  <div class="card" style="padding:8px 18px" id="tenantList"></div>`;
+};
+AFTER.tenants = () => renderTenantList();
+function renderTenantList(){
+  const q = TF.q.trim().toLowerCase();
+  const list = DB.tenants.filter(t => (TF.tab==='moved') === (t.status==='moved'))
+    .filter(t => !q || [t.name, t.phone, (roomById(t.roomId)||{}).number].join(' ').toLowerCase().includes(q))
+    .sort((x,y) => String((roomById(x.roomId)||{}).number||'').localeCompare(String((roomById(y.roomId)||{}).number||''), 'th', {numeric:true}));
+  $('#tenantList').innerHTML = !list.length ? emptyBox('users', TF.tab==='moved' ? 'ยังไม่มีผู้เช่าที่ย้ายออก' : 'ยังไม่มีผู้เช่า', TF.tab==='moved'?'':`<button class="btn btn-primary" onclick="openTenantForm()">${ic('plus')}เพิ่มผู้เช่า</button>`) :
+  `<div class="list">${list.map(t => { const d = t.endDate ? daysUntil(t.endDate) : null, r = roomById(t.roomId);
+    const unpaid = DB.bills.filter(b => b.tenantId === t.id && b.status !== 'paid');
+    return `<div class="row">
+      <div class="avatar">${r ? esc(r.number) : initials(t.name)}</div>
+      <div class="main"><div class="t">${esc(t.name)} ${unpaid.length?`<span class="badge b-bad">ค้าง ${baht(sum(unpaid,'total'))}</span>`:''}</div>
+        <div class="s">${t.phone?`<a href="tel:${esc(t.phone.replace(/[^0-9+]/g,''))}">${esc(t.phone)}</a> · `:''}${r?'ห้อง '+esc(r.number):'-'} · เข้าพัก ${dateTH(t.startDate)}${t.endDate?' – '+dateTH(t.endDate):''}
+        ${t.status!=='moved' && d!==null && d<=45 ? ` <span class="badge ${d<0?'b-bad':'b-warn'}">${d<0?'สัญญาหมดแล้ว':'สัญญาเหลือ '+d+' วัน'}</span>` : ''}</div>
+        ${n(t.deposit)?`<div class="s">เงินประกัน ${baht(t.deposit)}</div>`:''}</div>
+      <div class="acts">
+        ${(() => { const mb = moveInBillOf(t.id); return mb ? `<button class="btn btn-sm" onclick="openInvoice('${mb.id}')">${ic('door')}บิลแรกเข้า</button>`
+          : t.status !== 'moved' ? `<button class="btn btn-sm btn-soft" onclick="openMoveInForm('${t.id}')">${ic('plus')}บิลแรกเข้า</button>` : ''; })()}
+        <button class="btn btn-sm" onclick="tenantBills('${t.id}')">${ic('history')}บิล</button>
+        <button class="btn-icon" title="แก้ไข" onclick="openTenantForm('${t.id}')">${ic('edit')}</button>
+        ${t.status!=='moved' ? `<button class="btn btn-sm btn-soft" onclick="openMoveOut('${t.id}')">${ic('out')}ย้ายออก</button>` : `<button class="btn-icon" title="ลบ" onclick="deleteTenant('${t.id}')">${ic('trash')}</button>`}
+      </div></div>`; }).join('')}</div>`;
+}
+function openTenantForm(id, roomId){
+  const t = id ? DB.tenants.find(x => x.id === id) : {name:'', phone:'', idCard:'', roomId: roomId||'', startDate: todayStr(), endDate:'', deposit:'', address:'', emergency:'', note:'', status:'active'};
+  const avail = sortRooms(DB.rooms).filter(r => r.id === t.roomId || (!tenantOf(r.id) && r.status !== 'maintenance'));
+  openModal({title: id ? 'แก้ไขข้อมูลผู้เช่า' : 'เพิ่มผู้เช่าใหม่',
+    body:`<form id="tenantForm" class="form-grid" onsubmit="return false">
+      ${field('ชื่อ-นามสกุล <span class="req">*</span>', txtIn('name', t.name, 'required'), 'full')}
+      ${field('เบอร์โทรศัพท์', txtIn('phone', t.phone, 'type="tel" inputmode="tel"'))}
+      ${field('เลขบัตรประชาชน', txtIn('idCard', t.idCard, 'inputmode="numeric"'))}
+      ${t.status==='moved' ? field('ห้อง', `<input value="${esc(roomLabel(t.roomId))} (ย้ายออกแล้ว)" readonly>`) :
+        field('ห้องพัก <span class="req">*</span>', `<select name="roomId"><option value="">— เลือกห้อง —</option>${avail.map(r => `<option value="${r.id}" ${r.id===t.roomId?'selected':''}>ห้อง ${esc(r.number)} · ${baht(r.price)}${r.status==='reserved'?' (จอง)':''}</option>`).join('')}</select>`)}
+      ${field('เงินประกัน (บาท)', numIn('deposit', t.deposit))}
+      ${field('วันที่เข้าพัก', `<input type="date" name="startDate" value="${esc(t.startDate)}">`)}
+      ${field('วันสิ้นสุดสัญญา', `<input type="date" name="endDate" value="${esc(t.endDate)}">`)}
+      ${field('ที่อยู่ตามบัตร', `<textarea name="address">${esc(t.address)}</textarea>`, 'full')}
+      ${field('ผู้ติดต่อฉุกเฉิน', txtIn('emergency', t.emergency, 'placeholder="ชื่อ / เบอร์โทร / ความสัมพันธ์"'), 'full')}
+      ${field('หมายเหตุ', txtIn('note', t.note), 'full')}
+    </form>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="tSave" onclick="saveTenant('${id||''}')">${ic('check')}บันทึก</button>`});
+}
+async function saveTenant(id){
+  const o = formObj($('#tenantForm'));
+  if(!o.name) return toast('กรุณากรอกชื่อผู้เช่า', 'bad');
+  const old = id ? DB.tenants.find(x => x.id === id) : null;
+  if(!(old && old.status === 'moved')){
+    if(!o.roomId) return toast('กรุณาเลือกห้อง', 'bad');
+    const other = tenantOf(o.roomId); if(other && other.id !== id) return toast('ห้องนี้มีผู้เช่าแล้ว', 'bad');
+  }
+  if(id) o.id = id; else o.status = 'active';
+  $('#tSave').disabled = true;
+  try {
+    const saved = await saveRec('Tenants', o);
+    const r = o.roomId && roomById(o.roomId);
+    if(r && r.status === 'reserved') await saveRec('Rooms', {id:r.id, status:'vacant'});
+    toast('บันทึกข้อมูลผู้เช่าแล้ว'); closeModal(); render();
+    if(!id && await confirmBox(`ต้องการออก <b>บิลแรกเข้า</b> ให้ ${esc(saved.name)} เลยหรือไม่?<div class="hint">ค่าเช่าล่วงหน้า เงินประกัน ค่าทำสัญญา และจดมิเตอร์เริ่มต้น</div>`, {yes:'ออกบิลแรกเข้า', title:'บิลแรกเข้า'})) openMoveInForm(saved.id);
+  } catch(e){ $('#tSave').disabled = false; }
+}
+function openMoveOut(id){
+  const t = DB.tenants.find(x => x.id === id), unpaid = DB.bills.filter(b => b.tenantId === id && b.status !== 'paid');
+  openModal({title:'ย้ายออก · ' + t.name, size:'sm',
+    body:`${unpaid.length?`<div class="card" style="background:var(--bad-bg);border:0;box-shadow:none;padding:12px;margin-bottom:14px;color:var(--bad)">มีบิลค้างชำระ ${unpaid.length} บิล รวม ${baht(sum(unpaid,'total'))}</div>`:''}
+    <form id="moForm" class="form-grid" onsubmit="return false">
+      ${field('วันที่ย้ายออก', `<input type="date" name="endDate" value="${todayStr()}">`, 'full')}
+      ${field('คืนเงินประกัน (บาท)', numIn('refund', t.deposit), 'full')}
+      ${field('หมายเหตุ', txtIn('note', t.note, 'placeholder="เช่น หักค่าทำความสะอาด"'), 'full')}
+    </form><p class="hint">ห้อง ${esc(roomLabel(t.roomId))} จะเปลี่ยนเป็นสถานะ "ว่าง" อัตโนมัติ</p>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="moBtn" onclick="doMoveOut('${id}')">${ic('out')}ยืนยันย้ายออก</button>`});
+}
+async function doMoveOut(id){
+  const o = formObj($('#moForm')); $('#moBtn').disabled = true;
+  const note = [o.note, n(o.refund) ? 'คืนเงินประกัน ' + fmt(o.refund) + ' บาท' : ''].filter(Boolean).join(' · ');
+  try { await saveRec('Tenants', {id, status:'moved', endDate:o.endDate, note}); toast('บันทึกการย้ายออกแล้ว'); closeModal(); render(); }
+  catch(e){ $('#moBtn').disabled = false; }
+}
+async function deleteTenant(id){
+  const t = DB.tenants.find(x => x.id === id);
+  if(!await confirmBox(`ลบข้อมูล <b>${esc(t.name)}</b> ถาวร? (บิลเดิมยังคงอยู่ในประวัติ)`, {danger:true, yes:'ลบ'})) return;
+  try { await delRec('Tenants', id); toast('ลบแล้ว'); render(); } catch(e){}
+}
+function tenantBills(id){
+  const t = DB.tenants.find(x => x.id === id);
+  const list = DB.bills.filter(b => b.tenantId === id).sort((a,b) => b.month.localeCompare(a.month));
+  openModal({title:'ประวัติบิล · ' + t.name, body: list.length ? `<div class="list">${list.map(billRow).join('')}</div>
+    <div class="sm muted" style="margin-top:10px">รวมชำระแล้ว ${baht(sum(list.filter(b=>b.status==='paid'),'total'))} · ค้าง ${baht(sum(list.filter(b=>b.status!=='paid'),'total'))}</div>` : emptyBox('receipt','ยังไม่มีบิล')});
+}
+function billRow(b){ const bs = billState(b); return `<div class="row" style="cursor:pointer" onclick="openInvoice('${b.id}')">
+  <div class="avatar">${esc(b.roomNumber)}</div>
+  <div class="main"><div class="t">${billLabel(b)}${isMI(b)?' <span class="badge b-info">แรกเข้า</span>':''}</div><div class="s">${esc(b.tenantName)} · ${b.status==='paid'?'ชำระ '+dateTH(b.paidDate):'ครบกำหนด '+dateTH(b.dueDate)}</div></div>
+  <div style="text-align:right"><div class="amt">${baht(b.total)}</div><span class="badge ${bs.cls}">${bs.label}</span></div></div>`; }
+
+/* ---------- รายงานสรุปยอด ---------- */
+let repYear = new Date().getFullYear();
+VIEWS.reports = () => {
+  const years = new Set([new Date().getFullYear()]);
+  DB.bills.forEach(b => b.month && years.add(+b.month.slice(0,4))); DB.expenses.forEach(e => e.date && years.add(+e.date.slice(0,4)));
+  const Y = String(repYear), yb = DB.bills.filter(b => (b.month||'').startsWith(Y)), ye = DB.expenses.filter(e => (e.date||'').startsWith(Y));
+  const months = Array.from({length:12}, (_,i) => { const m = Y + '-' + pad(i+1), bs = yb.filter(b => b.month === m), es = ye.filter(e => e.date.slice(0,7) === m);
+    const billed = sum(bs, billIncome), recv = sum(bs.filter(b=>b.status==='paid'), billIncome), exp = sum(es,'amount');
+    return {m, billed, recv, out: billed-recv, exp, net: recv-exp, cnt: bs.length}; });
+  const T = k => sum(months, k);
+  const depYear = sum(yb.filter(b => b.status==='paid'), 'deposit');
+  const rent = sum(yb,'rent'), water = sum(yb,'waterAmt'), elec = sum(yb,'elecAmt'), other = sum(yb, b => billIncome(b)-n(b.rent)-n(b.waterAmt)-n(b.elecAmt));
+  const parts = [['ค่าเช่าห้อง',rent,'var(--brown)'],['ค่าน้ำ',water,'#7FA3C0'],['ค่าไฟ',elec,'#D9A441'],['อื่น ๆ (หักส่วนลด)',other,'var(--beige-2)']];
+  const maxPart = Math.max(1, ...parts.map(p => Math.abs(p[1])));
+  const byRoom = sortRooms(DB.rooms).map(r => { const bs = yb.filter(b => b.roomId === r.id); return {r, billed:sum(bs,billIncome), recv:sum(bs.filter(b=>b.status==='paid'),billIncome)}; }).filter(x => x.billed);
+  const expCat = {}; ye.forEach(e => expCat[e.category||'อื่นๆ'] = (expCat[e.category||'อื่นๆ']||0) + n(e.amount));
+  return `<div class="toolbar"><div class="month-nav"><span class="muted sm">ปี</span><select style="width:auto" onchange="repYear=+this.value;render()">${[...years].sort((a,b)=>b-a).map(y => `<option value="${y}" ${y===repYear?'selected':''}>${y+543}</option>`).join('')}</select></div>
+    <div class="grow"></div><button class="btn" onclick="exportReport()">${ic('download')}ส่งออก CSV</button></div>
+  <div class="stack">
+    <div class="grid g4">
+      ${statCard('receipt','ยอดเรียกเก็บทั้งปี', baht(T('billed')), yb.length+' บิล')}
+      ${statCard('wallet','รับเงินแล้ว', baht(T('recv')), (T('billed')?Math.round(T('recv')/T('billed')*100)+'% ของยอดเรียกเก็บ':'') + (depYear?` · ไม่รวมเงินประกัน ${baht(depYear)}`:''))}
+      ${statCard('coins','รายจ่าย', baht(T('exp')), ye.length+' รายการ')}
+      ${statCard('chart','กำไรสุทธิ', baht(T('net')), 'รับเงินแล้ว − รายจ่าย')}
+    </div>
+    <div class="card"><h3>${ic('chart')}รายรับ-รายจ่ายรายเดือน ปี ${repYear+543}</h3>
+      <div class="chart-legend"><span><i style="background:var(--brown)"></i>รับเงินแล้ว</span><span><i style="background:var(--beige-2)"></i>ค้างชำระ</span><span><i style="background:#C9A27A;opacity:.55"></i>รายจ่าย</span></div>
+      <div class="chart">${barChart(months)}</div></div>
+    <div class="grid g2" style="align-items:start">
+      <div class="card"><h3>สัดส่วนรายได้</h3>${parts.map(([l,v,c]) => `<div class="hbar"><div class="top"><span>${l}</span><b>${baht(v)}</b></div><div class="track"><div class="fill" style="width:${Math.max(0,v)/maxPart*100}%;background:${c}"></div></div></div>`).join('')}</div>
+      <div class="card"><h3>รายจ่ายตามหมวด</h3>${Object.keys(expCat).length ? Object.entries(expCat).sort((a,b)=>b[1]-a[1]).map(([k,v]) => `<div class="hbar"><div class="top"><span>${esc(k)}</span><b>${baht(v)}</b></div><div class="track"><div class="fill" style="width:${v/Math.max(...Object.values(expCat))*100}%;background:#C9A27A"></div></div></div>`).join('') : emptyBox('coins','ยังไม่มีรายจ่ายในปีนี้')}</div>
+    </div>
+    <div class="card"><h3>สรุปรายเดือน</h3><div class="tbl-wrap"><table class="tbl"><thead><tr><th>เดือน</th><th class="r">จำนวนบิล</th><th class="r">เรียกเก็บ</th><th class="r">รับแล้ว</th><th class="r">ค้างชำระ</th><th class="r">รายจ่าย</th><th class="r">สุทธิ</th></tr></thead>
+      <tbody>${months.map(x => `<tr><td>${TH_M[+x.m.slice(5)-1]}</td><td class="r">${x.cnt||'-'}</td><td class="r">${fmt(x.billed)}</td><td class="r">${fmt(x.recv)}</td><td class="r" style="${x.out?'color:var(--bad)':''}">${fmt(x.out)}</td><td class="r">${fmt(x.exp)}</td><td class="r b">${fmt(x.net)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>รวม</td><td class="r">${T('cnt')}</td><td class="r">${fmt(T('billed'))}</td><td class="r">${fmt(T('recv'))}</td><td class="r">${fmt(T('out'))}</td><td class="r">${fmt(T('exp'))}</td><td class="r">${fmt(T('net'))}</td></tr></tfoot></table></div></div>
+    ${byRoom.length ? `<div class="card"><h3>สรุปรายห้อง</h3><div class="tbl-wrap"><table class="tbl"><thead><tr><th>ห้อง</th><th>ผู้เช่าปัจจุบัน</th><th class="r">เรียกเก็บ</th><th class="r">รับแล้ว</th><th class="r">ค้างชำระ</th></tr></thead>
+      <tbody>${byRoom.map(x => `<tr><td class="b">${esc(x.r.number)}</td><td>${esc((tenantOf(x.r.id)||{}).name||'-')}</td><td class="r">${fmt(x.billed)}</td><td class="r">${fmt(x.recv)}</td><td class="r" style="${x.billed-x.recv?'color:var(--bad)':''}">${fmt(x.billed-x.recv)}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
+  </div>`;
+};
+function niceMax(v){ if(v <= 0) return 1000; const p = Math.pow(10, Math.floor(Math.log10(v))); const f = v / p; return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10) * p; }
+function barChart(data){
+  const W = 760, H = 270, pl = 46, pr = 8, pt = 14, pb = 30, ih = H-pt-pb;
+  const max = niceMax(Math.max(...data.map(d => Math.max(d.billed, d.exp)))), cw = (W-pl-pr)/data.length, bw = Math.min(18, cw*0.3);
+  const y = v => pt + ih - (v/max)*ih;
+  let g = '';
+  for(let i=0;i<=4;i++){ const v = max*i/4, yy = y(v); g += `<line x1="${pl}" x2="${W-pr}" y1="${yy}" y2="${yy}" stroke="#EFE6D7" stroke-width="1"/><text x="${pl-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="#9A8A7A">${shortNum(v)}</text>`; }
+  data.forEach((d,i) => {
+    const cx = pl + i*cw + cw/2, x1 = cx - bw - 2, x2 = cx + 2;
+    const hR = d.recv/max*ih, hO = d.out/max*ih, hE = d.exp/max*ih;
+    g += `<g><title>${TH_M[i]}\nรับแล้ว ${fmt(d.recv)}\nค้างชำระ ${fmt(d.out)}\nรายจ่าย ${fmt(d.exp)}</title>`;
+    if(hO > 0) g += `<rect x="${x1}" y="${y(d.recv+d.out)}" width="${bw}" height="${hO}" rx="3" fill="#DFCDAF"/>`;
+    if(hR > 0) g += `<rect x="${x1}" y="${y(d.recv)}" width="${bw}" height="${hR}" rx="3" fill="#8B6A4E"/>`;
+    if(hE > 0) g += `<rect x="${x2}" y="${y(d.exp)}" width="${bw}" height="${hE}" rx="3" fill="#C9A27A" opacity=".55"/>`;
+    g += `<rect x="${pl+i*cw}" y="${pt}" width="${cw}" height="${ih}" fill="transparent"/></g>`;
+    g += `<text x="${cx}" y="${H-10}" text-anchor="middle" font-size="11.5" fill="#8E7D6D">${TH_MS[i]}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="กราฟรายรับรายจ่ายรายเดือน" font-family="IBM Plex Sans Thai, sans-serif">${g}</svg>`;
+}
+function downloadCSV(name, rows){
+  if(HOSTED) return toast('การส่งออกไฟล์ใช้ได้ในเวอร์ชันติดตั้งจริง');
+  const csv = '﻿' + rows.map(r => r.map(c => { const s = String(c==null?'':c); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; }).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function exportReport(){
+  const Y = String(repYear), rows = [['เดือน','เรียกเก็บ','รับแล้ว','ค้างชำระ','รายจ่าย','สุทธิ']];
+  for(let i=1;i<=12;i++){ const m = Y+'-'+pad(i), bs = DB.bills.filter(b => b.month===m), es = DB.expenses.filter(e => (e.date||'').slice(0,7)===m);
+    const bl = sum(bs,billIncome), rc = sum(bs.filter(b=>b.status==='paid'),billIncome), ex = sum(es,'amount'); rows.push([monthTH(m), bl, rc, bl-rc, ex, rc-ex]); }
+  downloadCSV(`report-${repYear+543}.csv`, rows);
+}
+
+/* ---------- ประวัติย้อนหลัง ---------- */
+let HF = {from:'', to:'', room:'', status:'', type:'', q:''};
+VIEWS.history = () => `<div class="card" style="margin-bottom:16px"><div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+    ${field('ตั้งแต่เดือน', `<input type="month" value="${HF.from}" onchange="HF.from=this.value;renderHist()">`)}
+    ${field('ถึงเดือน', `<input type="month" value="${HF.to}" onchange="HF.to=this.value;renderHist()">`)}
+    ${field('ห้อง', `<select onchange="HF.room=this.value;renderHist()"><option value="">ทุกห้อง</option>${[...new Set(DB.bills.map(b=>b.roomNumber))].sort((a,b)=>String(a).localeCompare(String(b),'th',{numeric:true})).map(x=>`<option ${HF.room===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
+    ${field('สถานะ', `<select onchange="HF.status=this.value;renderHist()">${opts([['','ทั้งหมด'],['paid','ชำระแล้ว'],['unpaid','ยังไม่ชำระ']], HF.status)}</select>`)}
+    ${field('ประเภทบิล', `<select onchange="HF.type=this.value;renderHist()">${opts([['','ทั้งหมด'],['monthly','บิลรายเดือน'],['movein','บิลแรกเข้า']], HF.type)}</select>`)}
+    ${field('ค้นหาชื่อผู้เช่า', `<input value="${esc(HF.q)}" placeholder="พิมพ์ชื่อ" oninput="HF.q=this.value;renderHist()">`)}
+  </div></div><div id="histList"></div>`;
+AFTER.history = () => renderHist();
+function histFiltered(){
+  const q = HF.q.trim().toLowerCase();
+  return DB.bills.filter(b => (!HF.from || b.month >= HF.from) && (!HF.to || b.month <= HF.to) && (!HF.room || b.roomNumber === HF.room) &&
+    (!HF.status || (HF.status==='paid' ? b.status==='paid' : b.status!=='paid')) && (!HF.type || (HF.type==='movein') === isMI(b)) &&(!q || String(b.tenantName).toLowerCase().includes(q)))
+    .sort((a,b) => b.month.localeCompare(a.month) || String(a.roomNumber).localeCompare(String(b.roomNumber),'th',{numeric:true}));
+}
+function renderHist(){
+  const list = histFiltered(), paid = list.filter(b => b.status==='paid');
+  $('#histList').innerHTML = `<div class="toolbar"><div class="chips"><span class="badge b-muted">${list.length} บิล</span><span class="badge b-brown">รวม ${baht(sum(list,'total'))}</span><span class="badge b-ok">ชำระแล้ว ${baht(sum(paid,'total'))}</span><span class="badge b-bad">ค้าง ${baht(sum(list,'total')-sum(paid,'total'))}</span></div>
+    <div class="grow"></div><button class="btn btn-sm" onclick="HF={from:'',to:'',room:'',status:'',type:'',q:''};render()">ล้างตัวกรอง</button><button class="btn btn-sm" onclick="exportHist()">${ic('download')}ส่งออก CSV</button></div>
+    <div class="card" style="padding:8px 18px">${list.length ? `<div class="list">${list.slice(0,300).map(billRow).join('')}</div>${list.length>300?'<div class="sm muted" style="padding:10px 0">แสดง 300 รายการแรก — ใช้ตัวกรองเพื่อจำกัดผลลัพธ์</div>':''}` : emptyBox('history','ไม่พบบิลตามเงื่อนไข')}</div>`;
+}
+function exportHist(){
+  const rows = [['เลขที่บิล','ประเภท','รอบบิล','ห้อง','ผู้เช่า','ค่าเช่า','เงินประกัน','น้ำ(หน่วย)','ค่าน้ำ','ไฟ(หน่วย)','ค่าไฟ','อื่นๆ','ส่วนลด','รวม','สถานะ','ครบกำหนด','วันที่ชำระ','ช่องทาง']];
+  histFiltered().forEach(b => rows.push([b.billNo, isMI(b)?'แรกเข้า':'รายเดือน', b.month, b.roomNumber, b.tenantName, b.rent, b.deposit||0, isMI(b)?'-':b.waterMode==='flat'?'เหมาจ่าย':n(b.waterCurr)-n(b.waterPrev), b.waterAmt, n(b.elecCurr)-n(b.elecPrev), b.elecAmt,
+    sum(parseExtras(b.extras),'amount'), b.discount, b.total, b.status==='paid'?'ชำระแล้ว':'ค้างชำระ', b.dueDate, b.paidDate, b.paidMethod]));
+  downloadCSV('bills-history.csv', rows);
+}
+
+/* ---------- รายจ่าย ---------- */
+let expMonth = '';
+VIEWS.expenses = () => {
+  const list = DB.expenses.filter(e => !expMonth || (e.date||'').startsWith(expMonth)).sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  return `<div class="toolbar"><div class="month-nav"><input type="month" value="${expMonth}" onchange="expMonth=this.value;render()">${expMonth?`<button class="btn btn-sm" onclick="expMonth='';render()">ทั้งหมด</button>`:''}</div>
+    <span class="badge b-brown">รวม ${baht(sum(list,'amount'))}</span><div class="grow"></div>
+    <button class="btn btn-primary" onclick="openExpForm()">${ic('plus')}บันทึกรายจ่าย</button></div>
+  <div class="card" style="padding:8px 18px">${list.length ? `<div class="list">${list.map(e => `<div class="row">
+    <div class="avatar">${ic('coins','style="width:18px;height:18px"')}</div>
+    <div class="main"><div class="t">${esc(e.detail||e.category)}</div><div class="s">${dateTH(e.date)} · ${esc(e.category)}${e.roomId?' · '+roomLabel(e.roomId):''}</div></div>
+    <div class="amt">${baht(e.amount)}</div>
+    <div class="acts"><button class="btn-icon" onclick="openExpForm('${e.id}')">${ic('edit')}</button><button class="btn-icon" onclick="deleteExp('${e.id}')">${ic('trash')}</button></div></div>`).join('')}</div>`
+    : emptyBox('coins','ยังไม่มีรายจ่าย', `<button class="btn btn-primary" onclick="openExpForm()">${ic('plus')}บันทึกรายจ่าย</button>`)}</div>`;
+};
+function openExpForm(id){
+  const e = id ? DB.expenses.find(x => x.id === id) : {date:todayStr(), category:EXP_CATS[0], detail:'', amount:'', roomId:'', note:''};
+  openModal({title: id ? 'แก้ไขรายจ่าย' : 'บันทึกรายจ่าย',
+    body:`<form id="expForm" class="form-grid" onsubmit="return false">
+      ${field('วันที่', `<input type="date" name="date" value="${esc(e.date)}">`)}
+      ${field('หมวดหมู่', txtIn('category', e.category, 'list="expCats"') + `<datalist id="expCats">${EXP_CATS.map(x=>`<option value="${x}">`).join('')}</datalist>`)}
+      ${field('รายละเอียด', txtIn('detail', e.detail, 'placeholder="เช่น ซ่อมปั๊มน้ำ"'), 'full')}
+      ${field('จำนวนเงิน (บาท) <span class="req">*</span>', numIn('amount', e.amount))}
+      ${field('เกี่ยวกับห้อง', `<select name="roomId"><option value="">— ส่วนกลาง —</option>${sortRooms(DB.rooms).map(r=>`<option value="${r.id}" ${r.id===e.roomId?'selected':''}>ห้อง ${esc(r.number)}</option>`).join('')}</select>`)}
+    </form>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="expSave" onclick="saveExp('${id||''}')">${ic('check')}บันทึก</button>`});
+}
+async function saveExp(id){
+  const o = formObj($('#expForm')); if(!n(o.amount)) return toast('กรุณากรอกจำนวนเงิน', 'bad');
+  if(id) o.id = id; $('#expSave').disabled = true;
+  try { await saveRec('Expenses', o); toast('บันทึกรายจ่ายแล้ว'); closeModal(); render(); } catch(e){ $('#expSave').disabled = false; }
+}
+async function deleteExp(id){ if(!await confirmBox('ลบรายการรายจ่ายนี้?', {danger:true, yes:'ลบ'})) return; try { await delRec('Expenses', id); toast('ลบแล้ว'); render(); } catch(e){} }
+
+/* ---------- แจ้งซ่อม ---------- */
+let repTab = 'open';
+VIEWS.repairs = () => {
+  const open = DB.repairs.filter(r => r.status !== 'done'), done = DB.repairs.filter(r => r.status === 'done');
+  const list = (repTab === 'open' ? open : done).sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  return `<div class="toolbar"><div class="chips"><button class="chip ${repTab==='open'?'active':''}" onclick="repTab='open';render()">กำลังดำเนินการ<span class="c">${open.length}</span></button><button class="chip ${repTab==='done'?'active':''}" onclick="repTab='done';render()">เสร็จแล้ว<span class="c">${done.length}</span></button></div>
+    <div class="grow"></div><button class="btn btn-primary" onclick="openRepForm()">${ic('plus')}แจ้งซ่อม</button></div>
+  <div class="card" style="padding:8px 18px">${list.length ? `<div class="list">${list.map(r => { const s = REP_ST[r.status] || REP_ST.pending; return `<div class="row">
+    <div class="avatar">${esc((roomById(r.roomId)||{}).number || ic('tool','style="width:18px;height:18px"'))}</div>
+    <div class="main"><div class="t">${esc(r.title)} <span class="badge ${s.cls}">${s.label}</span></div><div class="s">แจ้ง ${dateTH(r.date)}${r.doneDate?' · เสร็จ '+dateTH(r.doneDate):''}${n(r.cost)?' · ค่าใช้จ่าย '+baht(r.cost):''}</div>${r.detail?`<div class="s">${esc(r.detail)}</div>`:''}</div>
+    <div class="acts">${r.status!=='done'?`<button class="btn btn-sm btn-ok" onclick="openRepForm('${r.id}',true)">${ic('check')}เสร็จแล้ว</button>`:''}<button class="btn-icon" onclick="openRepForm('${r.id}')">${ic('edit')}</button><button class="btn-icon" onclick="deleteRep('${r.id}')">${ic('trash')}</button></div></div>`; }).join('')}</div>`
+    : emptyBox('tool', repTab==='open' ? 'ไม่มีงานซ่อมค้าง' : 'ยังไม่มีงานที่เสร็จ')}</div>`;
+};
+function openRepForm(id, finish){
+  const r = id ? Object.assign({}, DB.repairs.find(x => x.id === id)) : {date:todayStr(), roomId:'', title:'', detail:'', status:'pending', cost:'', doneDate:''};
+  if(finish){ r.status = 'done'; r.doneDate = r.doneDate || todayStr(); }
+  openModal({title: finish ? 'ปิดงานซ่อม' : id ? 'แก้ไขงานซ่อม' : 'แจ้งซ่อมใหม่',
+    body:`<form id="repForm" class="form-grid" onsubmit="return false">
+      ${field('เรื่อง <span class="req">*</span>', txtIn('title', r.title, 'placeholder="เช่น แอร์ไม่เย็น"'), 'full')}
+      ${field('ห้อง', `<select name="roomId"><option value="">— ส่วนกลาง —</option>${sortRooms(DB.rooms).map(x=>`<option value="${x.id}" ${x.id===r.roomId?'selected':''}>ห้อง ${esc(x.number)}</option>`).join('')}</select>`)}
+      ${field('วันที่แจ้ง', `<input type="date" name="date" value="${esc(r.date)}">`)}
+      ${field('รายละเอียด', `<textarea name="detail">${esc(r.detail)}</textarea>`, 'full')}
+      ${field('สถานะ', `<select name="status">${opts(Object.entries(REP_ST).map(([k,v])=>[k,v.label]), r.status)}</select>`)}
+      ${field('วันที่เสร็จ', `<input type="date" name="doneDate" value="${esc(r.doneDate)}">`)}
+      ${field('ค่าใช้จ่าย (บาท)', numIn('cost', r.cost))}
+      ${!(id && n(r.cost)) ? `<label class="field" style="display:flex;align-items:center;gap:8px;margin-top:24px"><input type="checkbox" name="toExpense" style="width:18px;min-height:18px" ${finish?'checked':''}> <span style="margin:0">บันทึกเป็นรายจ่ายด้วย</span></label>` : ''}
+    </form>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="repSave" onclick="saveRep('${id||''}')">${ic('check')}บันทึก</button>`});
+}
+async function saveRep(id){
+  const o = formObj($('#repForm')); if(!o.title) return toast('กรุณากรอกเรื่องที่แจ้งซ่อม', 'bad');
+  const toExp = o.toExpense; delete o.toExpense; if(id) o.id = id;
+  if(o.status === 'done' && !o.doneDate) o.doneDate = todayStr();
+  $('#repSave').disabled = true;
+  try {
+    await saveRec('Repairs', o);
+    if(toExp && n(o.cost)) await saveRec('Expenses', {date:o.doneDate||todayStr(), category:'ค่าซ่อมบำรุง', detail:o.title, amount:o.cost, roomId:o.roomId});
+    toast('บันทึกแล้ว'); closeModal(); render();
+  } catch(e){ $('#repSave').disabled = false; }
+}
+async function deleteRep(id){ if(!await confirmBox('ลบรายการแจ้งซ่อมนี้?', {danger:true, yes:'ลบ'})) return; try { await delRec('Repairs', id); toast('ลบแล้ว'); render(); } catch(e){} }
+
+/* ---------- ตั้งค่าบัญชีรับเงิน ---------- */
+VIEWS.payment = () => { const s = S(); return `<div class="grid g2" style="align-items:start">
+  <div class="card"><h3>${ic('wallet')}ข้อมูลบัญชีรับเงิน</h3>
+    <form id="payAccForm" class="form-grid" onsubmit="return false">
+      ${field('ธนาคาร', txtIn('bankName', s.bankName, 'list="bankList" placeholder="เลือกหรือพิมพ์ชื่อธนาคาร"') + `<datalist id="bankList">${BANKS.map(x=>`<option value="${x}">`).join('')}</datalist>`, 'full')}
+      ${field('ชื่อบัญชี', txtIn('accountName', s.accountName), 'full')}
+      ${field('เลขที่บัญชี', txtIn('accountNo', s.accountNo, 'inputmode="numeric" placeholder="xxx-x-xxxxx-x"'))}
+      ${field('พร้อมเพย์ (เบอร์/เลขบัตร)', txtIn('promptPay', s.promptPay, 'inputmode="numeric"'))}
+    </form>
+    <div style="margin-top:16px;display:flex;justify-content:flex-end"><button class="btn btn-primary" id="payAccSave" onclick="savePayAcc()">${ic('check')}บันทึกข้อมูลบัญชี</button></div>
+  </div>
+  <div class="stack">
+    <div class="card"><h3>${ic('image')}คิวอาร์โค้ดรับเงิน</h3>
+      <div class="qr-box">${s.qrImage ? `<img src="${s.qrImage}" alt="QR รับเงิน">` : `<div class="empty" style="padding:20px">${'<div class="ic">'+ic('image')+'</div>'}ยังไม่มีรูป QR Code</div>`}
+        <input type="file" id="qrFile" accept="image/&#42;" class="hide" onchange="uploadQR(this)">
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn btn-primary" onclick="$('#qrFile').click()">${ic('image')}${s.qrImage?'เปลี่ยนรูป QR':'แนบรูป QR Code'}</button>${s.qrImage?`<button class="btn btn-danger" onclick="removeQR()">${ic('trash')}ลบรูป</button>`:''}</div>
+        <p class="hint">รองรับไฟล์ JPG / PNG — ระบบย่อขนาดให้อัตโนมัติ${IS_GAS?' และเก็บไว้ใน Google Drive โฟลเดอร์ RentalSystem_Files':IS_SUPA?' และเก็บไว้ใน Supabase Storage (ส่วนตัว)':''}</p></div>
+    </div>
+    <div class="card"><h3>${ic('eye')}ตัวอย่างบนใบแจ้งค่าเช่า</h3>
+      <div class="pay-preview">${s.qrImage?`<img src="${s.qrImage}" alt="">`:''}<div class="kv"><span class="k">ธนาคาร</span><b>${esc(s.bankName||'-')}</b><span class="k">ชื่อบัญชี</span><b>${esc(s.accountName||'-')}</b><span class="k">เลขที่บัญชี</span><b>${esc(s.accountNo||'-')}</b><span class="k">พร้อมเพย์</span><b>${esc(s.promptPay||'-')}</b></div></div>
+    </div>
+    <div class="card"><h3>${ic('edit')}ลายเซ็นผู้ให้เช่า</h3>
+      <div class="sig-box">${s.signImage ? `<img src="${s.signImage}" alt="ลายเซ็น">` : `<div class="muted sm">ยังไม่มีลายเซ็น</div>`}
+        <div class="sig-name">(${esc(s.ownerName || 'ชื่อผู้ให้เช่า — ตั้งได้ที่ ตั้งค่าระบบ')})</div></div>
+      <input type="file" id="signFile" accept="image/&#42;" class="hide" onchange="uploadSignFile(this)">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn btn-primary" onclick="openSignPad()">${ic('edit')}เซ็นบนหน้าจอ</button>
+        <button class="btn" onclick="$('#signFile').click()">${ic('image')}อัปโหลดรูปลายเซ็น</button>
+        ${s.signImage ? `<button class="btn btn-danger" onclick="removeSign()">${ic('trash')}ลบ</button>` : ''}
+      </div>
+      <div style="margin-top:14px">${field('แสดงลายเซ็นบนบิล', `<select onchange="saveSignMode(this.value)">${opts([['all','ทุกใบ (ใบแจ้งค่าเช่า และใบเสร็จ)'],['paid','เฉพาะใบเสร็จ (เมื่อชำระแล้ว)'],['none','ไม่แสดง']], s.signMode||'all')}</select>`)}</div>
+      <p class="hint">อัปโหลดรูปถ่ายลายเซ็นบนกระดาษขาวได้ — ระบบจะลบพื้นหลังสีขาวให้อัตโนมัติ</p>
+    </div>
+  </div></div>`; };
+async function savePayAcc(){ const o = formObj($('#payAccForm')); $('#payAccSave').disabled = true; try { await saveSettings(o); toast('บันทึกข้อมูลบัญชีแล้ว'); render(); } catch(e){ $('#payAccSave').disabled = false; } }
+function resizeImage(file, max=900){
+  return new Promise((res, rej) => { const fr = new FileReader(); fr.onerror = rej;
+    fr.onload = () => { const img = new Image(); img.onerror = rej;
+      img.onload = () => { const s = Math.min(1, max/Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.round(img.width*s); c.height = Math.round(img.height*s); const x = c.getContext('2d');
+        x.fillStyle = '#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(img,0,0,c.width,c.height);
+        const png = c.toDataURL('image/png'); res(png.length > 900000 ? c.toDataURL('image/jpeg', .9) : png); };
+      img.src = fr.result; };
+    fr.readAsDataURL(file); });
+}
+async function uploadQR(input){
+  const f = input.files && input.files[0]; if(!f) return;
+  if(!/^image\//.test(f.type)) return toast('กรุณาเลือกไฟล์รูปภาพ', 'bad');
+  try { const d = await resizeImage(f); const r = await call('UploadQR', d); DB.settings.qrImage = r; toast('อัปโหลด QR Code แล้ว'); render(); }
+  catch(e){ console.error(e); } finally { input.value = ''; }
+}
+async function removeQR(){ if(!await confirmBox('ลบรูป QR Code?', {danger:true, yes:'ลบ'})) return; try { await call('RemoveQR'); DB.settings.qrImage = ''; toast('ลบรูปแล้ว'); render(); } catch(e){} }
+
+/* ---------- ลายเซ็นผู้ให้เช่า ---------- */
+let PAD = null;
+function openSignPad(){
+  const colors = [['#1F2A5A','น้ำเงินเข้ม'],['#1D4ED8','น้ำเงิน'],['#222222','ดำ']];
+  openModal({title:'เซ็นชื่อบนหน้าจอ',
+    body:`<p class="sm muted" style="margin-top:0">ใช้นิ้ว ปากกาสไตลัส หรือเมาส์ เซ็นชื่อในกรอบด้านล่าง</p>
+      <div class="pad-wrap" id="padWrap"><canvas id="signPad"></canvas><div class="pad-line"></div><div class="pad-x">✕</div></div>
+      <div style="display:flex;gap:10px;margin-top:12px;align-items:center;flex-wrap:wrap"><span class="sm muted">สีหมึก</span>
+        ${colors.map(([c,l],i) => `<button type="button" class="pen ${i?'':'on'}" title="${l}" style="background:${c}" onclick="setPen('${c}',this)"></button>`).join('')}
+        <div style="flex:1"></div><button type="button" class="btn btn-sm" onclick="clearPad()">${ic('x')}ล้าง</button></div>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="padSave" onclick="savePad()">${ic('check')}บันทึกลายเซ็น</button>`});
+  setTimeout(setupPad, 30);
+}
+function setupPad(){
+  const cv = $('#signPad'), wrap = $('#padWrap'); if(!cv) return;
+  const dpr = Math.max(1, window.devicePixelRatio || 1), w = wrap.clientWidth, h = 220;
+  cv.width = w * dpr; cv.height = h * dpr; cv.style.width = w + 'px'; cv.style.height = h + 'px';
+  const ctx = cv.getContext('2d'); ctx.scale(dpr, dpr); ctx.lineCap = ctx.lineJoin = 'round';
+  PAD = {cv, ctx, color:'#1F2A5A', down:false, dirty:false, last:null};
+  const pos = e => { const r = cv.getBoundingClientRect(); return {x:e.clientX - r.left, y:e.clientY - r.top, p:e.pressure || .5}; };
+  cv.onpointerdown = e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); PAD.down = true; PAD.last = pos(e); PAD.mid = PAD.last;
+    ctx.fillStyle = PAD.color; ctx.beginPath(); ctx.arc(PAD.last.x, PAD.last.y, 1.4, 0, Math.PI*2); ctx.fill(); PAD.dirty = true; $('#padWrap').classList.add('used'); };
+  cv.onpointermove = e => { if(!PAD.down) return; e.preventDefault(); const p = pos(e), l = PAD.last;
+    const mid = {x:(l.x+p.x)/2, y:(l.y+p.y)/2};
+    ctx.strokeStyle = PAD.color; ctx.lineWidth = e.pointerType === 'pen' ? 1.4 + p.p*2.4 : 2.6;
+    ctx.beginPath(); ctx.moveTo(PAD.mid.x, PAD.mid.y); ctx.quadraticCurveTo(l.x, l.y, mid.x, mid.y); ctx.stroke();
+    PAD.last = p; PAD.mid = mid; };
+  cv.onpointerup = cv.onpointercancel = () => { PAD.down = false; };
+}
+function setPen(c, el){ if(PAD) PAD.color = c; $$('.pen').forEach(b => b.classList.remove('on')); el.classList.add('on'); }
+function clearPad(){ if(!PAD) return; PAD.ctx.clearRect(0, 0, PAD.cv.width, PAD.cv.height); PAD.dirty = false; $('#padWrap').classList.remove('used'); }
+// ตัดขอบว่างรอบลายเซ็น และย่อให้กว้างไม่เกิน maxW
+function trimCanvas(src, maxW=600){
+  const ctx = src.getContext('2d'), {width:w, height:h} = src, d = ctx.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){ if(d[(y*w+x)*4+3] > 10){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } }
+  if(x1 < 0) return null;
+  const p = Math.round(Math.max(w,h) * 0.02), sx = Math.max(0,x0-p), sy = Math.max(0,y0-p), sw = Math.min(w,x1+p) - sx, sh = Math.min(h,y1+p) - sy;
+  const k = Math.min(1, maxW / sw), out = document.createElement('canvas');
+  out.width = Math.round(sw*k); out.height = Math.round(sh*k);
+  out.getContext('2d').drawImage(src, sx, sy, sw, sh, 0, 0, out.width, out.height);
+  return out.toDataURL('image/png');
+}
+async function savePad(){
+  if(!PAD || !PAD.dirty) return toast('กรุณาเซ็นชื่อในกรอบก่อน', 'bad');
+  const d = trimCanvas(PAD.cv); if(!d) return toast('กรุณาเซ็นชื่อในกรอบก่อน', 'bad');
+  $('#padSave').disabled = true;
+  try { await call('UploadSign', d); DB.settings.signImage = d; toast('บันทึกลายเซ็นแล้ว'); closeModal(); render(); }
+  catch(e){ $('#padSave').disabled = false; }
+}
+function signFromFile(file){
+  return new Promise((res, rej) => { const fr = new FileReader(); fr.onerror = rej;
+    fr.onload = () => { const img = new Image(); img.onerror = rej;
+      img.onload = () => { const s = Math.min(1, 1000/Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.round(img.width*s); c.height = Math.round(img.height*s); const x = c.getContext('2d'); x.drawImage(img, 0, 0, c.width, c.height);
+        // ลบพื้นหลังสีขาว/สว่าง ให้โปร่งใส
+        const id = x.getImageData(0, 0, c.width, c.height), d = id.data;
+        for(let i=0;i<d.length;i+=4){ const l = .299*d[i] + .587*d[i+1] + .114*d[i+2];
+          if(l > 200) d[i+3] = 0; else if(l > 140) d[i+3] = Math.round(d[i+3] * (200-l)/60); }
+        x.putImageData(id, 0, 0); res(trimCanvas(c)); };
+      img.src = fr.result; };
+    fr.readAsDataURL(file); });
+}
+async function uploadSignFile(input){
+  const f = input.files && input.files[0]; if(!f) return;
+  if(!/^image\//.test(f.type)) return toast('กรุณาเลือกไฟล์รูปภาพ', 'bad');
+  try { const d = await signFromFile(f); if(!d) return toast('ไม่พบลายเซ็นในรูป ลองถ่ายบนกระดาษขาวด้วยปากกาสีเข้ม', 'bad');
+    await call('UploadSign', d); DB.settings.signImage = d; toast('บันทึกลายเซ็นแล้ว'); render(); }
+  catch(e){ console.error(e); } finally { input.value = ''; }
+}
+async function removeSign(){ if(!await confirmBox('ลบลายเซ็นผู้ให้เช่า?', {danger:true, yes:'ลบ'})) return; try { await call('RemoveSign'); DB.settings.signImage = ''; toast('ลบลายเซ็นแล้ว'); render(); } catch(e){} }
+async function saveSignMode(v){ try { await saveSettings({signMode:v}); toast('บันทึกแล้ว'); } catch(e){} }
+
+/* ---------- ตั้งค่าระบบ ---------- */
+VIEWS.settings = () => { const s = S(); return `<div class="stack">
+  <div class="card"><h3>${ic('home')}ข้อมูลหอพัก / ระบบ</h3>
+    <form id="setForm" class="form-grid" onsubmit="return false">
+      ${field('ชื่อระบบ / ชื่อหอพัก <span class="req">*</span>', txtIn('systemName', s.systemName), 'full')}
+      ${field('ชื่อเจ้าของ / ผู้ดูแล', txtIn('ownerName', s.ownerName))}
+      ${field('เบอร์โทรติดต่อ', txtIn('phone', s.phone, 'type="tel"'))}
+      ${field('ที่อยู่ (แสดงบนใบแจ้งค่าเช่า)', `<textarea name="address">${esc(s.address)}</textarea>`, 'full')}
+    </form></div>
+  <div class="card"><h3>${ic('receipt')}ค่าบริการ & การออกบิล</h3>
+    <form id="rateForm" class="form-grid" onsubmit="return false" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+      ${field('การคิดค่าน้ำ (ค่าตั้งต้น)', `<select name="waterMode">${opts([['unit','ตามหน่วยมิเตอร์'],['flat','เหมาจ่ายรายเดือน']], s.waterMode||'unit')}</select><div class="hint">กำหนดแยกรายห้องได้ที่ จัดการห้องพัก</div>`)}
+      ${field('ค่าน้ำเหมาจ่าย (บาท/เดือน)', numIn('waterFlat', s.waterFlat))}
+      ${field('ค่าน้ำ (บาท/หน่วย)', numIn('waterRate', s.waterRate))}
+      ${field('ค่าน้ำขั้นต่ำ/เดือน (บาท)', numIn('waterMin', s.waterMin) + '<div class="hint">ใส่ 0 หากไม่มีขั้นต่ำ</div>')}
+      ${field('ค่าไฟ (บาท/หน่วย)', numIn('elecRate', s.elecRate))}
+      ${field('ค่าส่วนกลาง/เดือน (บาท)', numIn('commonFee', s.commonFee) + '<div class="hint">ใส่ในบิลใหม่ให้อัตโนมัติ</div>')}
+      ${field('วันครบกำหนดชำระ (ของเดือนถัดไป)', numIn('dueDay', s.dueDay, 'min="1" max="28"'))}
+      ${field('ข้อความท้ายใบแจ้งค่าเช่า', txtIn('invoiceNote', s.invoiceNote), 'full')}
+    </form></div>
+  <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary" id="setSave" onclick="saveSystem()">${ic('check')}บันทึกการตั้งค่า</button></div>
+  <div class="grid g2" style="align-items:start">
+    ${IS_SUPA ? `<div class="card"><h3>${ic('lock')}บัญชีผู้ใช้</h3>
+      <p class="sm muted" style="margin-top:0">เข้าสู่ระบบด้วย <b>${esc(s.userEmail || Supa.email)}</b> ข้อมูลของบัญชีนี้แยกจากบัญชีอื่นทั้งหมด
+        ${DB.account ? '<br>' + (DB.account.is_admin ? 'สถานะ: <b>ผู้ดูแลระบบ</b>' : DB.account.expires_at ? 'ใช้งานได้ถึง <b>' + dateTH(DB.account.expires_at) + '</b>' : 'ไม่มีวันหมดอายุ') : ''}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="changePassword()">เปลี่ยนรหัสผ่าน</button><button class="btn btn-danger" onclick="logout()">ออกจากระบบ</button></div></div>` : `<div class="card"><h3>${ic('lock')}รหัส PIN เข้าระบบ</h3>
+      <p class="sm muted" style="margin-top:0">${s.hasPin ? 'เปิดใช้งาน PIN อยู่ ผู้ที่เปิดลิงก์ต้องใส่ PIN ก่อนเข้าระบบ' : 'ยังไม่ได้ตั้ง PIN — แนะนำให้ตั้งหากเผยแพร่เว็บแอปแบบ "ทุกคน"'}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="setPin()">${s.hasPin?'เปลี่ยน PIN':'ตั้ง PIN'}</button>${s.hasPin?`<button class="btn btn-danger" onclick="clearPin()">ปิดการใช้ PIN</button>`:''}</div></div>`}
+    <div class="card"><h3>${ic('download')}สำรองข้อมูล</h3>
+      <p class="sm muted" style="margin-top:0">${IS_GAS ? 'ข้อมูลทั้งหมดถูกเก็บใน Google Sheet ของคุณ สามารถดาวน์โหลดสำเนาเป็นไฟล์ JSON ได้' : IS_SUPA ? 'ข้อมูลทั้งหมดถูกเก็บในฐานข้อมูล Supabase ของคุณ สามารถดาวน์โหลดสำเนาเป็นไฟล์ JSON ได้' : 'โหมดทดลอง: ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น'}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="backupJSON()">${ic('download')}ดาวน์โหลดข้อมูล (JSON)</button>${!LIVE?`<button class="btn btn-danger" onclick="resetDemo()">รีเซ็ตข้อมูลทดลอง</button>`:''}</div></div>
+  </div></div>`; };
+async function saveSystem(){
+  const o = Object.assign(formObj($('#setForm')), formObj($('#rateForm')));
+  if(!o.systemName) return toast('กรุณากรอกชื่อระบบ', 'bad');
+  $('#setSave').disabled = true;
+  try { await saveSettings(o); toast('บันทึกการตั้งค่าแล้ว'); render(); } catch(e){ $('#setSave').disabled = false; }
+}
+function editSystemName(){
+  closeDrawer();
+  openModal({title:'เปลี่ยนชื่อระบบ', size:'sm',
+    body:`${field('ชื่อระบบ / ชื่อหอพัก', `<input id="sysNameIn" value="${esc(S().systemName)}" onkeydown="if(event.key==='Enter')saveSystemName()">`)}<p class="hint">ชื่อนี้จะแสดงที่เมนู แท็บเบราว์เซอร์ และหัวใบแจ้งค่าเช่า</p>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="snSave" onclick="saveSystemName()">${ic('check')}บันทึก</button>`});
+  setTimeout(() => { const el = $('#sysNameIn'); el.focus(); el.select(); }, 50);
+}
+async function saveSystemName(){
+  const v = $('#sysNameIn').value.trim(); if(!v) return toast('กรุณากรอกชื่อระบบ', 'bad');
+  $('#snSave').disabled = true;
+  try { await saveSettings({systemName:v}); toast('เปลี่ยนชื่อระบบแล้ว'); closeModal(); render(); } catch(e){ $('#snSave').disabled = false; }
+}
+function setPin(){
+  openModal({title:'ตั้งรหัส PIN', size:'sm', body:`<form id="pinForm" class="form-grid" onsubmit="return false">${field('PIN ใหม่ (4-8 หลัก)', '<input name="p1" type="password" inputmode="numeric" maxlength="8">', 'full')}${field('ยืนยัน PIN', '<input name="p2" type="password" inputmode="numeric" maxlength="8">', 'full')}</form>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="savePin()">บันทึก PIN</button>`});
+}
+async function savePin(){
+  const o = formObj($('#pinForm'));
+  if(!/^\d{4,8}$/.test(o.p1)) return toast('PIN ต้องเป็นตัวเลข 4-8 หลัก', 'bad');
+  if(o.p1 !== o.p2) return toast('PIN ไม่ตรงกัน', 'bad');
+  try { await saveSettings({newPin:o.p1}); PIN = o.p1; try { sessionStorage.setItem('rent_pin', PIN); } catch(e){} toast('ตั้ง PIN แล้ว'); closeModal(); render(); } catch(e){}
+}
+async function clearPin(){ if(!await confirmBox('ปิดการใช้ PIN? ทุกคนที่มีลิงก์จะเข้าระบบได้ทันที')) return; try { await saveSettings({newPin:''}); toast('ปิด PIN แล้ว'); render(); } catch(e){} }
+function backupJSON(){
+  if(HOSTED) return toast('การดาวน์โหลดไฟล์ใช้ได้ในเวอร์ชันติดตั้งจริง');
+  const d = JSON.stringify({exportedAt:new Date().toISOString(), settings:Object.assign({}, DB.settings, {qrImage:undefined, signImage:undefined}), rooms:DB.rooms, tenants:DB.tenants, bills:DB.bills, expenses:DB.expenses, repairs:DB.repairs}, null, 2);
+  const url = URL.createObjectURL(new Blob([d], {type:'application/json'})), a = document.createElement('a');
+  a.href = url; a.download = 'rental-backup-' + todayStr() + '.json'; document.body.appendChild(a); a.click(); a.remove();
+}
+async function resetDemo(){ if(!await confirmBox('ล้างข้อมูลทดลองและเริ่มใหม่ด้วยข้อมูลตัวอย่าง?', {danger:true, yes:'รีเซ็ต'})) return; Mock.reset(); reload(); }
+
+/* =========================================================
+   INIT
+   ========================================================= */
+function showIntro(){
+  try { localStorage.setItem('rent_intro', '1'); } catch(e){}
+  const f = [['receipt','ออกบิลรายเดือนในไม่กี่คลิก','ดึงเลขมิเตอร์เดือนก่อนให้อัตโนมัติ ค่าน้ำแบบตามหน่วยหรือเหมาจ่าย'],
+    ['print','ใบแจ้งค่าเช่า / ใบเสร็จ A4','มี QR รับเงิน เลขบัญชี และลายเซ็นผู้ให้เช่า ส่งเป็นรูปทาง LINE ได้'],
+    ['door','บิลแรกเข้า','ค่าเช่าล่วงหน้า เงินประกัน และจดมิเตอร์เริ่มต้น'],
+    ['chart','รายงานสรุปยอด','รายรับ รายจ่าย ยอดค้าง และกำไรสุทธิ รายเดือน/รายปี'],
+    ['users','ผู้เช่า ห้องพัก แจ้งซ่อม','ครบในที่เดียว ใช้ได้ทั้งมือถือ แท็บเล็ต และคอมพิวเตอร์']];
+  openModal({title:'ยินดีต้อนรับสู่เวอร์ชันทดลอง', size:'sm',
+    body:`<p style="margin-top:0">ระบบจัดการห้องเช่าที่ใช้ Google Sheet เป็นฐานข้อมูล ข้อมูลในเดโมนี้เป็นตัวอย่าง ลองกดใช้งานได้ทุกเมนู</p>
+      <div class="list">${f.map(([i,t,s]) => `<div class="row" style="padding:10px 0"><div class="avatar">${ic(i)}</div><div class="main"><div class="t">${t}</div><div class="s">${s}</div></div></div>`).join('')}</div>`,
+    foot:`<button class="btn btn-primary btn-block" onclick="closeModal()">เริ่มทดลองใช้</button>`});
+}
+let LOCK_HTML = '';
+function showLock(name){
+  if(!LOCK_HTML) LOCK_HTML = $('#lock .card').innerHTML;
+  if($('#lock .card').dataset.mode === 'expired'){ $('#lock .card').innerHTML = LOCK_HTML; $('#lock .card').dataset.mode = ''; }
+  if(IS_SUPA && !$('#loginEmail')){
+    $('#pinInput').outerHTML = `<input id="loginEmail" type="email" autocomplete="username" placeholder="อีเมล" style="letter-spacing:normal;font-size:16px;text-align:left;margin:14px 0 8px">
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="รหัสผ่าน" style="letter-spacing:normal;font-size:16px;text-align:left;margin:0 0 14px" onkeydown="if(event.key==='Enter')unlock()">`;
+    $('#lock .muted').textContent = 'เข้าสู่ระบบด้วยอีเมลและรหัสผ่าน';
+  }
+  $('#lockName').textContent = name || S().systemName || 'ระบบจัดการห้องเช่า'; $('#lock').classList.add('show'); $('#splash').classList.add('hide');
+  setTimeout(() => (IS_SUPA ? $('#loginEmail') : $('#pinInput')).focus(), 50);
+}
+async function unlock(){
+  if(IS_SUPA){
+    const mail = $('#loginEmail').value.trim(), pass = $('#loginPass').value;
+    if(!mail || !pass) return toast('กรุณากรอกอีเมลและรหัสผ่าน', 'bad');
+    busy(true);
+    try { await Supa.signIn(mail, pass); $('#loginPass').value = ''; }
+    catch(e){ toast(/invalid/i.test((e && e.message) || '') ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' : 'เข้าสู่ระบบไม่สำเร็จ: ' + ((e && e.message) || e), 'bad'); return; }
+    finally { busy(false); }
+    return load();
+  }
+  PIN = $('#pinInput').value.trim(); try { sessionStorage.setItem('rent_pin', PIN); } catch(e){} $('#pinInput').value = ''; load();
+}
+function changePassword(){
+  openModal({title:'เปลี่ยนรหัสผ่าน', size:'sm', body:`<form id="pwForm" class="form-grid" onsubmit="return false">${field('รหัสผ่านใหม่ (อย่างน้อย 8 ตัว)', '<input name="p1" type="password" autocomplete="new-password">', 'full')}${field('ยืนยันรหัสผ่าน', '<input name="p2" type="password" autocomplete="new-password">', 'full')}</form>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="savePassword()">บันทึก</button>`});
+}
+async function savePassword(){
+  const o = formObj($('#pwForm'));
+  if(String(o.p1 || '').length < 8) return toast('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร', 'bad');
+  if(o.p1 !== o.p2) return toast('รหัสผ่านไม่ตรงกัน', 'bad');
+  busy(true);
+  try { await Supa.changePassword(o.p1); toast('เปลี่ยนรหัสผ่านแล้ว'); closeModal(); }
+  catch(e){ toast('เปลี่ยนรหัสผ่านไม่สำเร็จ: ' + ((e && e.message) || e), 'bad'); }
+  finally { busy(false); }
+}
+async function logout(){
+  if(!await confirmBox('ออกจากระบบ?')) return;
+  await Supa.signOut();
+  DB = {settings:{}, rooms:[], tenants:[], bills:[], expenses:[], repairs:[]};
+  syncAccountUI();
+  $('#view').innerHTML = ''; showLock();
+}
+
+/* ---------- บัญชีลูกค้า: หมดอายุ / เตือน / หน้าแอดมิน ---------- */
+const isAdmin = () => !!(IS_SUPA && DB.account && DB.account.is_admin);
+function contactHTML(c){
+  if(!c) return '';
+  const lines = esc(c).replace(/(0\d{1,2}-?\d{3}-?\d{4})/g, m => `<a href="tel:${m.replace(/-/g,'')}">${m}</a>`);
+  return `<div style="margin-top:14px;background:var(--egg);border-radius:12px;padding:12px 14px;text-align:left;white-space:pre-line;font-size:14px">${lines}</div>`;
+}
+function showExpired(d){
+  if(!LOCK_HTML) LOCK_HTML = $('#lock .card').innerHTML;
+  const a = d.account || {};
+  const title = d.reason === 'suspended' ? 'บัญชีถูกระงับการใช้งาน' : d.reason === 'missing' ? 'ไม่พบข้อมูลบัญชี' : 'บัญชีหมดอายุแล้ว';
+  const msg = d.reason === 'expired' ? `บัญชี <b>${esc(d.email || a.email)}</b> หมดอายุเมื่อ ${dateTH(a.expires_at)}<br>ข้อมูลของคุณยังอยู่ครบ ต่ออายุแล้วใช้งานต่อได้ทันที`
+    : `บัญชี <b>${esc(d.email || a.email || '')}</b> ไม่สามารถใช้งานได้ในขณะนี้`;
+  const card = $('#lock .card');
+  card.dataset.mode = 'expired';
+  card.innerHTML = `<div class="logo" style="margin:0 auto 10px;background:var(--bad)">${ic('lock')}</div>
+    <h3 style="justify-content:center;margin:0">${title}</h3>
+    <p class="sm muted" style="margin:8px 0 0">${msg}</p>
+    ${d.contact ? `<div class="sm" style="margin-top:14px;font-weight:600">ติดต่อเพื่อต่ออายุ</div>${contactHTML(d.contact)}` : '<p class="sm muted">กรุณาติดต่อผู้ดูแลระบบ</p>'}
+    <div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-block" onclick="load()">${ic('refresh')}ตรวจสอบอีกครั้ง</button><button class="btn btn-block" onclick="Supa.signOut()">ออกจากระบบ</button></div>`;
+  $('#lock').classList.add('show'); $('#splash').classList.add('hide');
+}
+function syncAccountUI(){
+  const i = PAGES.findIndex(p => p.id === 'admin');
+  if(isAdmin() && i < 0) PAGES.push({id:'admin', label:'จัดการลูกค้า', icon:'users', sec:'ผู้ดูแลระบบ'});
+  if(!isAdmin() && i > -1){ PAGES.splice(i, 1); if(cur === 'admin') cur = 'dashboard'; }
+  const bn = $('#demoBanner'), a = DB.account;
+  if(!IS_SUPA) return;
+  const left = a && !a.is_admin && a.expires_at ? daysUntil(a.expires_at) : null;
+  if(left !== null && left <= 7){
+    bn.innerHTML = `<div style="flex:1;min-width:200px"><b>บัญชีจะหมดอายุ${left <= 0 ? 'วันนี้' : 'ในอีก ' + left + ' วัน'}</b> (ใช้ได้ถึง ${dateTH(a.expires_at)}) — ติดต่อผู้ดูแลเพื่อต่ออายุ ข้อมูลจะไม่หาย</div>`;
+    bn.classList.remove('hide');
+  } else bn.classList.add('hide');
+}
+const addMonths = (d, m) => { const x = new Date(d + 'T00:00:00'); const day = x.getDate(); x.setMonth(x.getMonth() + m); if(x.getDate() !== day) x.setDate(0); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); };
+const addDays = (d, n2) => { const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + n2); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); };
+function genPassword(){
+  const cs = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const a = new Uint32Array(10); crypto.getRandomValues(a);
+  return Array.from(a, v => cs[v % cs.length]).join('');
+}
+const AD = {users:[], me:'', config:{}, q:'', tab:'all', loaded:false};
+function accState(u){
+  if(u.is_admin) return {k:'admin', label:'ผู้ดูแลระบบ', cls:'b-brown'};
+  if(!u.active) return {k:'suspended', label:'ระงับ', cls:'b-muted'};
+  if(!u.expires_at) return {k:'active', label:'ไม่มีวันหมดอายุ', cls:'b-ok'};
+  const d = daysUntil(u.expires_at);
+  if(d < 0) return {k:'expired', label:'หมดอายุ', cls:'b-bad'};
+  if(d <= 7) return {k:'soon', label:'เหลือ ' + d + ' วัน', cls:'b-warn'};
+  return {k:'active', label:'ใช้งานอยู่', cls:'b-ok'};
+}
+VIEWS.admin = () => {
+  if(!isAdmin()) return emptyBox('lock', 'เฉพาะผู้ดูแลระบบ');
+  const cs = AD.users.filter(u => !u.is_admin), st = cs.map(accState);
+  const cnt = k => st.filter(s => s.k === k).length;
+  const tabs = [['all','ทั้งหมด',cs.length],['active','ใช้งานอยู่',cnt('active')],['soon','ใกล้หมดอายุ',cnt('soon')],['expired','หมดอายุ',cnt('expired')],['suspended','ระงับ',cnt('suspended')]];
+  return `<div class="grid g4" style="margin-bottom:16px">
+      <div class="card stat"><div class="lbl">${ic('users')}ลูกค้าทั้งหมด</div><div class="val">${cs.length}</div></div>
+      <div class="card stat"><div class="lbl">${ic('check')}ใช้งานอยู่</div><div class="val">${cnt('active') + cnt('soon')}</div></div>
+      <div class="card stat"><div class="lbl">${ic('alert')}ใกล้หมดอายุ (7 วัน)</div><div class="val">${cnt('soon')}</div></div>
+      <div class="card stat"><div class="lbl">${ic('lock')}หมดอายุ / ระงับ</div><div class="val">${cnt('expired') + cnt('suspended')}</div></div>
+    </div>
+    <div class="toolbar">
+      <div class="search">${ic('search')}<input placeholder="ค้นหาอีเมล / ชื่อ / เบอร์โทร" value="${esc(AD.q)}" oninput="AD.q=this.value;renderAdminList()"></div>
+      <div class="grow"></div>
+      <button class="btn" onclick="loadAdmin()">${ic('refresh')}รีเฟรช</button>
+      <button class="btn btn-primary" onclick="openCustomerForm()">${ic('plus')}เพิ่มลูกค้า</button></div>
+    <div class="chips" style="margin-bottom:16px">${tabs.map(([k,l,c]) => `<button class="chip ${AD.tab===k?'active':''}" onclick="AD.tab='${k}';render()">${l}<span class="c">${c}</span></button>`).join('')}</div>
+    <div class="card" style="padding:8px 18px;margin-bottom:16px" id="adminList">${AD.loaded ? '' : emptyBox('refresh', 'กำลังโหลดรายชื่อลูกค้า…')}</div>
+    <div class="card"><h3>${ic('phone')}ช่องทางติดต่อ (แสดงเมื่อบัญชีลูกค้าหมดอายุ)</h3>
+      ${field('ข้อความ เช่น ชื่อ เบอร์โทร LINE ID', `<textarea id="adContact" rows="3" placeholder="เช่น ติดต่อคุณสมใจ โทร 081-234-5678 LINE: @rentalapp">${esc(AD.config.contact || '')}</textarea>`)}
+      <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn btn-primary" id="adContactBtn" onclick="saveContact()">${ic('check')}บันทึก</button></div></div>`;
+};
+AFTER.admin = () => { if(!AD.loaded) loadAdmin(); else renderAdminList(); };
+async function loadAdmin(){
+  try { const r = await call2(() => Supa.admin('list')); AD.users = r.users || []; AD.me = r.me; AD.config = r.config || {}; AD.loaded = true; if(cur === 'admin') render(); }
+  catch(e){ const el = $('#adminList'); if(el) el.innerHTML = emptyBox('alert', 'โหลดรายชื่อไม่สำเร็จ: ' + esc(e.message || e), `<button class="btn btn-primary" onclick="loadAdmin()">ลองอีกครั้ง</button>`); }
+}
+async function call2(fn){ busy(true); try { return await fn(); } finally { busy(false); } }
+function renderAdminList(){
+  const el = $('#adminList'); if(!el || !AD.loaded) return;
+  const q = AD.q.trim().toLowerCase();
+  const list = AD.users.filter(u => AD.tab === 'all' ? true : u.is_admin ? false : accState(u).k === AD.tab)
+    .filter(u => !q || [u.email, u.display_name, u.phone, u.note].join(' ').toLowerCase().includes(q))
+    .sort((a, b) => (b.is_admin - a.is_admin) || String(a.expires_at || '9999').localeCompare(String(b.expires_at || '9999')));
+  el.innerHTML = !list.length ? emptyBox('users', AD.users.length > 1 ? 'ไม่พบบัญชีที่ตรงกับเงื่อนไข' : 'ยังไม่มีบัญชีลูกค้า', `<button class="btn btn-primary" onclick="openCustomerForm()">${ic('plus')}เพิ่มลูกค้า</button>`) :
+  `<div class="list">${list.map(u => { const s = accState(u), me = u.user_id === AD.me;
+    return `<div class="row">
+      <div class="avatar">${esc(initials(u.display_name || u.email))}</div>
+      <div class="main"><div class="t">${esc(u.display_name || u.email)} <span class="badge ${s.cls}">${s.label}</span>${me ? ' <span class="badge b-info">คุณ</span>' : ''}</div>
+        <div class="s">${esc(u.email)}${u.phone ? ' · <a href="tel:' + esc(u.phone.replace(/[^0-9+]/g, '')) + '">' + esc(u.phone) + '</a>' : ''}</div>
+        <div class="s">${u.is_admin ? 'บัญชีผู้ดูแล' : u.expires_at ? 'ใช้ได้ถึง ' + dateTH(u.expires_at) : 'ไม่มีวันหมดอายุ'} · ${u.rooms} ห้อง · เข้าใช้ล่าสุด ${u.last_sign_in_at ? dateTH(u.last_sign_in_at.slice(0, 10)) : 'ยังไม่เคย'}${u.note ? ' · ' + esc(u.note) : ''}</div></div>
+      <div class="acts">${u.is_admin ? `<button class="btn btn-sm" onclick="openResetPw('${u.user_id}')">${ic('lock')}เปลี่ยนรหัส</button>` : `
+        <button class="btn btn-sm btn-soft" onclick="openRenew('${u.user_id}')">${ic('calendar')}ต่ออายุ</button>
+        <button class="btn-icon" title="แก้ไข" onclick="openCustomerForm('${u.user_id}')">${ic('edit')}</button>
+        <button class="btn-icon" title="รีเซ็ตรหัสผ่าน" onclick="openResetPw('${u.user_id}')">${ic('lock')}</button>
+        <button class="btn btn-sm" onclick="toggleActive('${u.user_id}')">${u.active ? 'ระงับ' : 'เปิดใช้'}</button>
+        <button class="btn-icon" title="ลบบัญชี" onclick="deleteCustomer('${u.user_id}')">${ic('trash')}</button>`}</div></div>`; }).join('')}</div>`;
+}
+const PLANS = [['1','1 เดือน'],['3','3 เดือน'],['6','6 เดือน'],['12','1 ปี'],['trial','ทดลอง 7 วัน'],['none','ไม่มีวันหมดอายุ']];
+const planDate = (p, base) => p === 'none' ? '' : p === 'trial' ? addDays(base, 7) : addMonths(base, +p);
+function openCustomerForm(id){
+  const u = id ? AD.users.find(x => x.user_id === id) : null;
+  openModal({title: u ? 'แก้ไขข้อมูลลูกค้า' : 'เพิ่มบัญชีลูกค้า', size:'sm',
+    body:`<form id="custForm" class="form-grid" onsubmit="return false">
+      ${u ? field('อีเมล (ใช้เข้าระบบ)', `<input value="${esc(u.email)}" readonly>`, 'full')
+          : field('อีเมล (ใช้เข้าระบบ) <span class="req">*</span>', '<input name="email" type="email" autocomplete="off" required>', 'full') +
+            field('รหัสผ่าน <span class="req">*</span>', `<div style="display:flex;gap:8px"><input name="password" id="cfPw" autocomplete="new-password" value="${genPassword()}" style="flex:1"><button type="button" class="btn" onclick="$('#cfPw').value=genPassword()">สุ่มใหม่</button></div><div class="hint">อย่างน้อย 8 ตัว — ส่งให้ลูกค้าหลังสร้างบัญชี</div>`, 'full')}
+      ${field('ชื่อลูกค้า / ชื่อหอพัก', `<input name="displayName" value="${esc(u ? u.display_name : '')}">`)}
+      ${field('เบอร์โทร', `<input name="phone" type="tel" value="${esc(u ? u.phone : '')}">`)}
+      ${u ? '' : field('แพ็กเกจ', `<select name="plan" onchange="$('#cfExp').value=planDate(this.value, todayStr())">${PLANS.map(([k,l]) => `<option value="${k}" ${k==='1'?'selected':''}>${l}</option>`).join('')}</select>`) +
+        field('ใช้ได้ถึงวันที่', `<input name="expiresAt" id="cfExp" type="date" value="${planDate('1', todayStr())}"><div class="hint">เว้นว่าง = ไม่มีวันหมดอายุ</div>`)}
+      ${field('หมายเหตุ', `<input name="note" value="${esc(u ? u.note : '')}" placeholder="เช่น ชำระแล้ว 1,500 บาท">`, 'full')}
+    </form>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="cfSave" onclick="saveCustomer('${u ? u.user_id : ''}')">${ic('check')}${u ? 'บันทึก' : 'สร้างบัญชี'}</button>`});
+}
+async function saveCustomer(id){
+  const o = formObj($('#custForm'));
+  if(!id){
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email || '')) return toast('กรุณากรอกอีเมลให้ถูกต้อง', 'bad');
+    if(String(o.password || '').length < 8) return toast('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร', 'bad');
+  }
+  $('#cfSave').disabled = true;
+  try {
+    if(id) await call2(() => Supa.admin('update', {userId:id, displayName:o.displayName, phone:o.phone, note:o.note}));
+    else await call2(() => Supa.admin('create', {email:o.email, password:o.password, displayName:o.displayName, phone:o.phone, note:o.note, expiresAt:o.expiresAt}));
+    await loadAdmin();
+    if(id){ toast('บันทึกแล้ว'); closeModal(); }
+    else showCredentials(o.email, o.password, o.expiresAt);
+  } catch(e){ toast(e.message || String(e), 'bad'); $('#cfSave').disabled = false; }
+}
+function credText(email, pw, exp){
+  const link = location.href.split('#')[0].split('?')[0];
+  return `ระบบ: ${S().systemName || 'ระบบจัดการห้องเช่า'}\nลิงก์เข้าใช้งาน: ${link}\nอีเมล: ${email}\nรหัสผ่าน: ${pw}\n${exp ? 'ใช้งานได้ถึง: ' + dateTH(exp) : 'ไม่มีวันหมดอายุ'}\n(แนะนำให้เปลี่ยนรหัสผ่านที่เมนู ตั้งค่าระบบ → บัญชีผู้ใช้)`;
+}
+function showCredentials(email, pw, exp){
+  const t = credText(email, pw, exp);
+  openModal({title:'สร้างบัญชีเรียบร้อย', size:'sm',
+    body:`<p class="sm muted" style="margin-top:0">ส่งข้อมูลนี้ให้ลูกค้า (รหัสผ่านจะไม่แสดงอีก)</p>
+      <textarea id="credBox" rows="7" readonly style="font-size:14px">${esc(t)}</textarea>`,
+    foot:`<button class="btn" onclick="closeModal()">ปิด</button><button class="btn btn-primary" onclick="copyText($('#credBox').value)">คัดลอกข้อความ</button>`});
+}
+async function copyText(t){
+  try { await navigator.clipboard.writeText(t); toast('คัดลอกแล้ว'); }
+  catch(e){ const el = $('#credBox'); if(el){ el.select(); document.execCommand('copy'); toast('คัดลอกแล้ว'); } }
+}
+function openRenew(id){
+  const u = AD.users.find(x => x.user_id === id); if(!u) return;
+  const base = u.expires_at && u.expires_at >= todayStr() ? u.expires_at : todayStr();
+  openModal({title:'ต่ออายุ · ' + (u.display_name || u.email), size:'sm',
+    body:`<p class="sm muted" style="margin-top:0">ปัจจุบัน: ${u.expires_at ? 'ใช้ได้ถึง ' + dateTH(u.expires_at) : 'ไม่มีวันหมดอายุ'} — ต่อจาก ${dateTH(base)}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${[['1','+1 เดือน'],['3','+3 เดือน'],['6','+6 เดือน'],['12','+1 ปี']].map(([m,l]) => `<button class="btn btn-sm" onclick="$('#rnDate').value=addMonths('${base}',${m})">${l}</button>`).join('')}</div>
+      ${field('ใช้ได้ถึงวันที่', `<input id="rnDate" type="date" value="${addMonths(base, 1)}"><div class="hint">เว้นว่าง = ไม่มีวันหมดอายุ</div>`)}`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="rnSave" onclick="saveRenew('${id}')">${ic('check')}บันทึก</button>`});
+}
+async function saveRenew(id){
+  $('#rnSave').disabled = true;
+  try { await call2(() => Supa.admin('update', {userId:id, expiresAt:$('#rnDate').value, active:true})); toast('ต่ออายุแล้ว'); closeModal(); await loadAdmin(); }
+  catch(e){ toast(e.message || String(e), 'bad'); $('#rnSave').disabled = false; }
+}
+function openResetPw(id){
+  const u = AD.users.find(x => x.user_id === id); if(!u) return;
+  openModal({title:'ตั้งรหัสผ่านใหม่ · ' + (u.display_name || u.email), size:'sm',
+    body:field('รหัสผ่านใหม่', `<div style="display:flex;gap:8px"><input id="rpPw" autocomplete="new-password" value="${genPassword()}" style="flex:1"><button type="button" class="btn" onclick="$('#rpPw').value=genPassword()">สุ่มใหม่</button></div><div class="hint">อย่างน้อย 8 ตัว</div>`),
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="rpSave" onclick="saveResetPw('${id}')">${ic('check')}บันทึก</button>`});
+}
+async function saveResetPw(id){
+  const pw = $('#rpPw').value, u = AD.users.find(x => x.user_id === id);
+  if(pw.length < 8) return toast('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร', 'bad');
+  $('#rpSave').disabled = true;
+  try { await call2(() => Supa.admin('password', {userId:id, password:pw})); showCredentials(u.email, pw, u.is_admin ? '' : u.expires_at); }
+  catch(e){ toast(e.message || String(e), 'bad'); $('#rpSave').disabled = false; }
+}
+async function toggleActive(id){
+  const u = AD.users.find(x => x.user_id === id); if(!u) return;
+  if(u.active && !await confirmBox(`ระงับบัญชี <b>${esc(u.email)}</b>? ลูกค้าจะเข้าใช้งานไม่ได้จนกว่าจะเปิดใช้อีกครั้ง (ข้อมูลไม่หาย)`, {yes:'ระงับ', danger:true})) return;
+  try { await call2(() => Supa.admin('update', {userId:id, active:!u.active})); toast(u.active ? 'ระงับบัญชีแล้ว' : 'เปิดใช้บัญชีแล้ว'); await loadAdmin(); }
+  catch(e){ toast(e.message || String(e), 'bad'); }
+}
+async function deleteCustomer(id){
+  const u = AD.users.find(x => x.user_id === id); if(!u) return;
+  if(!await confirmBox(`ลบบัญชี <b>${esc(u.email)}</b> ถาวร?<br><br>ข้อมูลหอพักทั้งหมดของลูกค้ารายนี้ (ห้อง ผู้เช่า บิล รูปภาพ) จะถูกลบและ<b>กู้คืนไม่ได้</b><br>หากแค่หยุดให้ใช้งาน แนะนำให้กด "ระงับ" แทน`, {title:'ลบบัญชีถาวร', yes:'ลบถาวร', danger:true})) return;
+  try { await call2(() => Supa.admin('delete', {userId:id})); toast('ลบบัญชีแล้ว'); await loadAdmin(); }
+  catch(e){ toast(e.message || String(e), 'bad'); }
+}
+async function saveContact(){
+  $('#adContactBtn').disabled = true;
+  try { const v = $('#adContact').value; await call2(() => Supa.admin('config', {contact:v})); AD.config.contact = v; toast('บันทึกช่องทางติดต่อแล้ว'); }
+  catch(e){ toast(e.message || String(e), 'bad'); }
+  finally { $('#adContactBtn').disabled = false; }
+}
+async function reload(){ await load(true); toast('โหลดข้อมูลล่าสุดแล้ว'); }
+async function load(quiet){
+  busy(true);
+  try {
+    const d = await api('GetAll');
+    if(d.locked){ if($('#lock').classList.contains('show') && !IS_SUPA) toast('PIN ไม่ถูกต้อง', 'bad'); showLock(d.systemName); return; }
+    if(d.expired) return showExpired(d);
+    $('#lock').classList.remove('show');
+    DB = {settings:d.settings||{}, rooms:d.rooms||[], tenants:d.tenants||[], bills:d.bills||[], expenses:d.expenses||[], repairs:d.repairs||[], account:d.account||null, contact:d.contact||''};
+    syncAccountUI();
+    applyBrand(); render();
+  } catch(e){
+    $('#view').innerHTML = `<div class="card">${emptyBox('alert', 'โหลดข้อมูลไม่สำเร็จ: ' + esc((e && e.message) || e), `<button class="btn btn-primary" onclick="load()">ลองอีกครั้ง</button>`)}</div>`;
+  } finally { busy(false); $('#splash').classList.add('hide'); }
+}
+document.addEventListener('keydown', e => { if(e.key === 'Escape'){ if($('#lightbox').classList.contains('show')) return closePhoto(); if($('#confirmBox').classList.contains('show')) $('#cfNo').click(); else closeModal(); } });
+(function init(){
+  if(!LIVE) $('#demoBanner').classList.remove('hide');
+  if(HOSTED){ let seen = false; try { seen = !!localStorage.getItem('rent_intro'); } catch(e){}
+    if(!seen) setTimeout(showIntro, 700); }
+  try { const p = localStorage.getItem('rent_page'); if(p && PAGES.some(x => x.id === p)) cur = p; } catch(e){}
+  load();
+})();
+</script>
+</body>
+</html>
