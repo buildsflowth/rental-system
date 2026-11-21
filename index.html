@@ -273,6 +273,12 @@ table.tbl{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
 .lock.show{display:flex}
 .lock .card{max-width:360px;width:100%;text-align:center}
 .lock input{text-align:center;font-size:22px;letter-spacing:.4em;margin:14px 0}
+.pw-wrap{position:relative;display:block}
+.pw-wrap input{padding-right:46px!important}
+.pw-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;background:transparent;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;padding:0}
+.pw-eye:hover{background:var(--bg);color:var(--text)}
+.lock-or{display:flex;align-items:center;gap:10px;margin:14px 0 10px;color:var(--muted);font-size:13px}
+.lock-or:before,.lock-or:after{content:"";flex:1;height:1px;background:var(--line)}
 
 /* QR / payment */
 .qr-box{border:2px dashed var(--beige-2);border-radius:16px;padding:16px;text-align:center;background:var(--egg)}
@@ -553,7 +559,8 @@ function bahtText(num){
    ========================================================= */
 const IS_GAS = !!(window.google && google.script && google.script.run);
 const SUPA_CFG = window.SUPABASE_CONFIG || null;          // มีไฟล์ config.js = เวอร์ชัน GitHub + Supabase
-const IS_SUPA = !IS_GAS && !!(SUPA_CFG && SUPA_CFG.url && SUPA_CFG.key);
+const DEMO = !IS_GAS && /[?&]demo(=|&|$)/.test(location.search);   // ?demo = ทดลองใช้ (ข้อมูลตัวอย่างในเครื่อง ไม่ต้องล็อกอิน)
+const IS_SUPA = !IS_GAS && !DEMO && !!(SUPA_CFG && SUPA_CFG.url && SUPA_CFG.key);
 const LIVE = IS_GAS || IS_SUPA;                           // ใช้งานจริง (ไม่ใช่โหมดทดลอง)
 const HOSTED = !!window.DEMO_HOSTED;   // เว็บเดโมออนไลน์: ไม่มีการพิมพ์/ดาวน์โหลดไฟล์
 let PIN = '';
@@ -2048,7 +2055,7 @@ function showIntro(){
     ['chart','รายงานสรุปยอด','รายรับ รายจ่าย ยอดค้าง และกำไรสุทธิ รายเดือน/รายปี'],
     ['users','ผู้เช่า ห้องพัก แจ้งซ่อม','ครบในที่เดียว ใช้ได้ทั้งมือถือ แท็บเล็ต และคอมพิวเตอร์']];
   openModal({title:'ยินดีต้อนรับสู่เวอร์ชันทดลอง', size:'sm',
-    body:`<p style="margin-top:0">ระบบจัดการห้องเช่าที่ใช้ Google Sheet เป็นฐานข้อมูล ข้อมูลในเดโมนี้เป็นตัวอย่าง ลองกดใช้งานได้ทุกเมนู</p>
+    body:`<p style="margin-top:0">${SUPA_CFG ? 'ระบบจัดการห้องเช่าออนไลน์ เปิดได้ทุกเครื่องทั้งมือถือและคอมพิวเตอร์' : 'ระบบจัดการห้องเช่าที่ใช้ Google Sheet เป็นฐานข้อมูล'} ข้อมูลในเดโมนี้เป็นตัวอย่าง ลองกดใช้งานได้ทุกเมนู</p>
       <div class="list">${f.map(([i,t,s]) => `<div class="row" style="padding:10px 0"><div class="avatar">${ic(i)}</div><div class="main"><div class="t">${t}</div><div class="s">${s}</div></div></div>`).join('')}</div>`,
     foot:`<button class="btn btn-primary btn-block" onclick="closeModal()">เริ่มทดลองใช้</button>`});
 }
@@ -2057,9 +2064,12 @@ function showLock(name){
   if(!LOCK_HTML) LOCK_HTML = $('#lock .card').innerHTML;
   if($('#lock .card').dataset.mode === 'expired'){ $('#lock .card').innerHTML = LOCK_HTML; $('#lock .card').dataset.mode = ''; }
   if(IS_SUPA && !$('#loginEmail')){
-    $('#pinInput').outerHTML = `<input id="loginEmail" type="email" autocomplete="username" placeholder="อีเมล" style="letter-spacing:normal;font-size:16px;text-align:left;margin:14px 0 8px">
+    ($('#pinInput').closest('.pw-wrap') || $('#pinInput')).outerHTML = `<input id="loginEmail" type="email" autocomplete="username" placeholder="อีเมล" style="letter-spacing:normal;font-size:16px;text-align:left;margin:14px 0 8px">
       <input id="loginPass" type="password" autocomplete="current-password" placeholder="รหัสผ่าน" style="letter-spacing:normal;font-size:16px;text-align:left;margin:0 0 14px" onkeydown="if(event.key==='Enter')unlock()">`;
     $('#lock .muted').textContent = 'เข้าสู่ระบบด้วยอีเมลและรหัสผ่าน';
+    $('#lock .btn-primary').insertAdjacentHTML('afterend', `<div class="lock-or"><span>หรือ</span></div>
+      <button class="btn btn-block" id="demoBtn" onclick="startDemo()">${ic('eye')}ทดลองใช้ระบบ (Demo)</button>
+      <div class="muted sm" style="margin-top:6px">ไม่ต้องใช้รหัส ข้อมูลตัวอย่างเก็บในเครื่องนี้เท่านั้น</div>`);
   }
   $('#lockName').textContent = name || S().systemName || 'ระบบจัดการห้องเช่า'; $('#lock').classList.add('show'); $('#splash').classList.add('hide');
   setTimeout(() => (IS_SUPA ? $('#loginEmail') : $('#pinInput')).focus(), 50);
@@ -2304,8 +2314,38 @@ async function load(quiet){
   } finally { busy(false); $('#splash').classList.add('hide'); }
 }
 document.addEventListener('keydown', e => { if(e.key === 'Escape'){ if($('#lightbox').classList.contains('show')) return closePhoto(); if($('#confirmBox').classList.contains('show')) $('#cfNo').click(); else closeModal(); } });
+function startDemo(){ location.href = location.pathname + '?demo=1'; }
+function exitDemo(){ location.href = location.pathname; }
+/* ---------- ปุ่มแสดง/ซ่อนรหัสผ่าน: ใส่ให้ทุกช่องรหัสผ่านอัตโนมัติ ---------- */
+const EYE_ON = '<svg class="i" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg class="i" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+function addEyes(root){
+  (root || document).querySelectorAll('input[type="password"]:not([data-eye])').forEach(inp => {
+    inp.dataset.eye = '1';
+    const wrap = document.createElement('span'); wrap.className = 'pw-wrap';
+    const cs = getComputedStyle(inp); wrap.style.margin = cs.margin; inp.style.margin = '0';
+    inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pw-eye'; b.innerHTML = EYE_ON; b.setAttribute('aria-label', 'แสดงรหัสผ่าน'); b.title = 'แสดงรหัสผ่าน';
+    wrap.appendChild(b);
+  });
+}
+document.addEventListener('mousedown', e => { if(e.target.closest && e.target.closest('.pw-eye')) e.preventDefault(); });
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('.pw-eye'); if(!b) return;
+  const inp = b.parentNode.querySelector('input'); if(!inp) return;
+  const show = inp.type === 'password'; inp.type = show ? 'text' : 'password';
+  b.innerHTML = show ? EYE_OFF : EYE_ON; const t = show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'; b.title = t; b.setAttribute('aria-label', t); inp.focus();
+});
+new MutationObserver(() => addEyes()).observe(document.body, {childList:true, subtree:true});
+addEyes();
 (function init(){
   if(!LIVE) $('#demoBanner').classList.remove('hide');
+  if(DEMO && SUPA_CFG){
+    $('#demoBanner').insertAdjacentHTML('beforeend', `<button class="btn btn-sm btn-primary" onclick="exitDemo()">${ic('lock')}เข้าสู่ระบบจริง</button>`);
+    let seen = false; try { seen = !!localStorage.getItem('rent_intro'); } catch(e){}
+    if(!seen && typeof showIntro === 'function') setTimeout(showIntro, 700);
+  }
   if(HOSTED){ let seen = false; try { seen = !!localStorage.getItem('rent_intro'); } catch(e){}
     if(!seen) setTimeout(showIntro, 700); }
   try { const p = localStorage.getItem('rent_page'); if(p && PAGES.some(x => x.id === p)) cur = p; } catch(e){}
