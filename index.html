@@ -5,8 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ระบบจัดการห้องเช่า</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%238B6A4E'/%3E%3Cpath d='M5 11.5 12 6l7 5.5M7 10.5V18h10v-7.5' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#8B6A4E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="&#3627;&#3657;&#3629;&#3591;&#3648;&#3594;&#3656;&#3634;">
 <script src="config.js"></script>
+<script src="pwa.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -451,6 +458,7 @@ img.ph-missing{opacity:.3}
     <div class="muted sm">กรุณาใส่รหัส PIN เพื่อเข้าใช้งาน</div>
     <input id="pinInput" type="password" inputmode="numeric" autocomplete="off" onkeydown="if(event.key==='Enter')unlock()">
     <button class="btn btn-primary btn-block" onclick="unlock()">เข้าสู่ระบบ</button>
+    <button class="btn btn-block pwa-install" style="display:none;margin-top:8px" onclick="window.PWA&&PWA.install()"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/></svg>ติดตั้งแอปลงเครื่อง</button>
   </div>
 </div>
 <div class="lightbox" id="lightbox" onclick="closePhoto()"><img id="lightboxImg" alt="รูปมิเตอร์"><button class="btn-icon" aria-label="ปิด"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
@@ -945,7 +953,8 @@ function renderNav(){
   const rep = DB.repairs.filter(r => r.status !== 'done').length;
   const badge = id => id==='bills' && unpaid ? `<span class="cnt">${unpaid}</span>` : id==='repairs' && rep ? `<span class="cnt">${rep}</span>` : '';
   $('#nav').innerHTML = PAGES.map(p => (p.sec ? `<div class="nav-sec">${p.sec}</div>` : '') +
-    `<a class="${cur===p.id?'active':''}" onclick="go('${p.id}')">${ic(p.icon)}<span>${p.label}</span>${badge(p.id)}</a>`).join('');
+    `<a class="${cur===p.id?'active':''}" onclick="go('${p.id}')">${ic(p.icon)}<span>${p.label}</span>${badge(p.id)}</a>`).join('') +
+    (window.PWA ? `<a class="pwa-install" onclick="closeDrawer();PWA.install()">${ic('download')}<span>ติดตั้งแอปลงเครื่อง</span></a>` : '');
   $('#bottomNav').innerHTML = BOTTOM.map(id => { const p = PAGES.find(x => x.id === id);
     return `<a class="${cur===id?'active':''}" onclick="go('${id}')">${ic(p.icon)}<span>${p.label.replace('จัดการ','').replace('ข้อมูล','')}</span></a>`; }).join('') +
     `<a class="${BOTTOM.includes(cur)?'':'active'}" onclick="openDrawer()">${ic('menu')}<span>เมนูอื่น</span></a>`;
