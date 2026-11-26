@@ -559,6 +559,9 @@ function bahtText(num){
    ========================================================= */
 const IS_GAS = !!(window.google && google.script && google.script.run);
 const SUPA_CFG = window.SUPABASE_CONFIG || null;          // มีไฟล์ config.js = เวอร์ชัน GitHub + Supabase
+const SELF_HOST = !!(SUPA_CFG && SUPA_CFG.selfHost);      // ระบบส่วนตัวบน GitHub + Supabase ของลูกค้าเอง (ไม่มีหน้าแอดมิน/วันหมดอายุ)
+const APP_VERSION = '1.1.0';
+const VENDOR = {name:'Buildsflowth', line:'@287yhkhu', url:'https://line.me/R/ti/p/@287yhkhu'};
 const DEMO = !IS_GAS && /[?&]demo(=|&|$)/.test(location.search);   // ?demo = ทดลองใช้ (ข้อมูลตัวอย่างในเครื่อง ไม่ต้องล็อกอิน)
 const IS_SUPA = !IS_GAS && !DEMO && !!(SUPA_CFG && SUPA_CFG.url && SUPA_CFG.key);
 const LIVE = IS_GAS || IS_SUPA;                           // ใช้งานจริง (ไม่ใช่โหมดทดลอง)
@@ -936,7 +939,7 @@ function defaultDue(m){ const d = Math.min(28, Math.max(1, n(S().dueDay) || 5));
 function upsertLocal(sheet, rec){ const arr = DB[KEY[sheet]]; const i = arr.findIndex(x => x.id === rec.id); if(i > -1) arr[i] = rec; else arr.push(rec); }
 async function saveRec(sheet, obj){ const r = await call('Save', sheet, obj); upsertLocal(sheet, r); return r; }
 async function delRec(sheet, id){ await call('Delete', sheet, id); DB[KEY[sheet]] = DB[KEY[sheet]].filter(x => x.id !== id); }
-async function saveSettings(obj){ const s = await call('SaveSettings', obj); s.qrImage = DB.settings.qrImage; s.signImage = DB.settings.signImage; DB.settings = s; applyBrand(); return s; }
+async function saveSettings(obj){ const s = await call('SaveSettings', obj); s.qrImage = DB.settings.qrImage; s.signImage = DB.settings.signImage; DB.settings = s; applyBrand(); syncAccountUI(); return s; }
 
 /* =========================================================
    UI SHELL
@@ -1999,13 +2002,19 @@ VIEWS.settings = () => { const s = S(); return `<div class="stack">
   <div class="grid g2" style="align-items:start">
     ${IS_SUPA ? `<div class="card"><h3>${ic('lock')}บัญชีผู้ใช้</h3>
       <p class="sm muted" style="margin-top:0">เข้าสู่ระบบด้วย <b>${esc(s.userEmail || Supa.email)}</b> ข้อมูลของบัญชีนี้แยกจากบัญชีอื่นทั้งหมด
-        ${DB.account ? '<br>' + (DB.account.is_admin ? 'สถานะ: <b>ผู้ดูแลระบบ</b>' : DB.account.expires_at ? 'ใช้งานได้ถึง <b>' + dateTH(DB.account.expires_at) + '</b>' : 'ไม่มีวันหมดอายุ') : ''}</p>
+        ${SELF_HOST ? '<br>ระบบส่วนตัวของคุณ ไม่มีวันหมดอายุ' : DB.account ? '<br>' + (DB.account.is_admin ? 'สถานะ: <b>ผู้ดูแลระบบ</b>' : DB.account.expires_at ? 'ใช้งานได้ถึง <b>' + dateTH(DB.account.expires_at) + '</b>' : 'ไม่มีวันหมดอายุ') : ''}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="changePassword()">เปลี่ยนรหัสผ่าน</button><button class="btn btn-danger" onclick="logout()">ออกจากระบบ</button></div></div>` : `<div class="card"><h3>${ic('lock')}รหัส PIN เข้าระบบ</h3>
       <p class="sm muted" style="margin-top:0">${s.hasPin ? 'เปิดใช้งาน PIN อยู่ ผู้ที่เปิดลิงก์ต้องใส่ PIN ก่อนเข้าระบบ' : 'ยังไม่ได้ตั้ง PIN — แนะนำให้ตั้งหากเผยแพร่เว็บแอปแบบ "ทุกคน"'}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="setPin()">${s.hasPin?'เปลี่ยน PIN':'ตั้ง PIN'}</button>${s.hasPin?`<button class="btn btn-danger" onclick="clearPin()">ปิดการใช้ PIN</button>`:''}</div></div>`}
     <div class="card"><h3>${ic('download')}สำรองข้อมูล</h3>
       <p class="sm muted" style="margin-top:0">${IS_GAS ? 'ข้อมูลทั้งหมดถูกเก็บใน Google Sheet ของคุณ สามารถดาวน์โหลดสำเนาเป็นไฟล์ JSON ได้' : IS_SUPA ? 'ข้อมูลทั้งหมดถูกเก็บในฐานข้อมูล Supabase ของคุณ สามารถดาวน์โหลดสำเนาเป็นไฟล์ JSON ได้' : 'โหมดทดลอง: ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น'}</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="backupJSON()">${ic('download')}ดาวน์โหลดข้อมูล (JSON)</button>${!LIVE?`<button class="btn btn-danger" onclick="resetDemo()">รีเซ็ตข้อมูลทดลอง</button>`:''}</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="backupJSON()">${ic('download')}ดาวน์โหลดข้อมูล (JSON)</button>${!LIVE?`<button class="btn btn-danger" onclick="resetDemo()">รีเซ็ตข้อมูลทดลอง</button>`:''}</div>
+      ${IS_GAS ? '<p class="hint" style="margin-bottom:0">สำรองทั้งไฟล์ได้ที่ Google Sheet เมนู <b>ระบบห้องเช่า → สำรองข้อมูลตอนนี้</b> หรือเปิดสำรองอัตโนมัติทุกสัปดาห์</p>' : ''}</div>
+    ${LIVE ? `<div class="card"><h3>${ic('settings')}เกี่ยวกับระบบ</h3>
+      <p class="sm muted" style="margin-top:0">ระบบจัดการห้องเช่า เวอร์ชัน <b>${APP_VERSION}</b><br>
+        รุ่น: <b>${IS_GAS ? 'Google Sheet (ซื้อขาด)' : SELF_HOST ? 'ระบบส่วนตัว GitHub + Supabase' : 'สมาชิกออนไลน์'}</b><br>
+        พัฒนาโดย ${VENDOR.name} · LINE ${VENDOR.line}</p>
+      <a class="btn" href="${VENDOR.url}" target="_blank" rel="noopener">${ic('phone')}ติดต่อผู้พัฒนา / แจ้งปัญหา</a></div>` : ''}
   </div></div>`; };
 async function saveSystem(){
   const o = Object.assign(formObj($('#setForm')), formObj($('#rateForm')));
@@ -2064,10 +2073,11 @@ function showLock(name){
   if(!LOCK_HTML) LOCK_HTML = $('#lock .card').innerHTML;
   if($('#lock .card').dataset.mode === 'expired'){ $('#lock .card').innerHTML = LOCK_HTML; $('#lock .card').dataset.mode = ''; }
   if(IS_SUPA && !$('#loginEmail')){
+    if(SELF_HOST) $('#lock .btn-primary').insertAdjacentHTML('afterend', '<div class="muted sm" style="margin-top:10px">ลืมรหัสผ่าน: ติดต่อผู้ติดตั้งระบบ หรือตั้งใหม่ที่ Supabase → Authentication → Users</div>');
     ($('#pinInput').closest('.pw-wrap') || $('#pinInput')).outerHTML = `<input id="loginEmail" type="email" autocomplete="username" placeholder="อีเมล" style="letter-spacing:normal;font-size:16px;text-align:left;margin:14px 0 8px">
       <input id="loginPass" type="password" autocomplete="current-password" placeholder="รหัสผ่าน" style="letter-spacing:normal;font-size:16px;text-align:left;margin:0 0 14px" onkeydown="if(event.key==='Enter')unlock()">`;
     $('#lock .muted').textContent = 'เข้าสู่ระบบด้วยอีเมลและรหัสผ่าน';
-    $('#lock .btn-primary').insertAdjacentHTML('afterend', `<div class="lock-or"><span>หรือ</span></div>
+    if(!SELF_HOST) $('#lock .btn-primary').insertAdjacentHTML('afterend', `<div class="lock-or"><span>หรือ</span></div>
       <button class="btn btn-block" id="demoBtn" onclick="startDemo()">${ic('eye')}ทดลองใช้ระบบ (Demo)</button>
       <div class="muted sm" style="margin-top:6px">ไม่ต้องใช้รหัส ข้อมูลตัวอย่างเก็บในเครื่องนี้เท่านั้น</div>`);
   }
@@ -2108,7 +2118,7 @@ async function logout(){
 }
 
 /* ---------- บัญชีลูกค้า: หมดอายุ / เตือน / หน้าแอดมิน ---------- */
-const isAdmin = () => !!(IS_SUPA && DB.account && DB.account.is_admin);
+const isAdmin = () => !!(IS_SUPA && !SELF_HOST && DB.account && DB.account.is_admin);
 function contactHTML(c){
   if(!c) return '';
   const lines = esc(c).replace(/(0\d{1,2}-?\d{3}-?\d{4})/g, m => `<a href="tel:${m.replace(/-/g,'')}">${m}</a>`);
@@ -2134,6 +2144,13 @@ function syncAccountUI(){
   if(isAdmin() && i < 0) PAGES.push({id:'admin', label:'จัดการลูกค้า', icon:'users', sec:'ผู้ดูแลระบบ'});
   if(!isAdmin() && i > -1){ PAGES.splice(i, 1); if(cur === 'admin') cur = 'dashboard'; }
   const bn = $('#demoBanner'), a = DB.account;
+  if(IS_GAS){
+    if(!S().hasPin){
+      bn.innerHTML = `<div style="flex:1;min-width:200px"><b>ยังไม่ได้ตั้ง PIN</b> — ใครที่มีลิงก์นี้จะเปิดระบบได้ทันที แนะนำให้ตั้ง PIN ก่อนใช้งานจริง</div><button class="btn btn-sm btn-primary" onclick="setPin()">${ic('lock')}ตั้ง PIN</button>`;
+      bn.classList.remove('hide');
+    } else bn.classList.add('hide');
+    return;
+  }
   if(!IS_SUPA) return;
   const left = a && !a.is_admin && a.expires_at ? daysUntil(a.expires_at) : null;
   if(left !== null && left <= 7){
@@ -2300,10 +2317,15 @@ async function saveContact(){
 }
 async function reload(){ await load(true); toast('โหลดข้อมูลล่าสุดแล้ว'); }
 async function load(quiet){
+  if(IS_SUPA && /ใส่/.test(SUPA_CFG.url + SUPA_CFG.key)){
+    $('#splash').classList.add('hide');
+    $('#view').innerHTML = `<div class="card">${emptyBox('settings', 'ยังไม่ได้ตั้งค่าการเชื่อมต่อฐานข้อมูล: แก้ไฟล์ config.js ใส่ Project URL และ Publishable key ของ Supabase ตามคู่มือ')}</div>`;
+    return;
+  }
   busy(true);
   try {
     const d = await api('GetAll');
-    if(d.locked){ if($('#lock').classList.contains('show') && !IS_SUPA) toast('PIN ไม่ถูกต้อง', 'bad'); showLock(d.systemName); return; }
+    if(d.locked){ if(d.wait) toast('ใส่ PIN ผิดหลายครั้ง กรุณารอ 15 นาทีแล้วลองใหม่', 'bad'); else if($('#lock').classList.contains('show') && !IS_SUPA) toast('PIN ไม่ถูกต้อง', 'bad'); showLock(d.systemName); return; }
     if(d.expired) return showExpired(d);
     $('#lock').classList.remove('show');
     DB = {settings:d.settings||{}, rooms:d.rooms||[], tenants:d.tenants||[], bills:d.bills||[], expenses:d.expenses||[], repairs:d.repairs||[], account:d.account||null, contact:d.contact||''};
