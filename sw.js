@@ -1,6 +1,6 @@
 // Service worker: ทำให้ติดตั้งเป็นแอปได้ และเปิดหน้าแอปได้เร็วขึ้น
 // ข้อมูลจริง (Supabase) ไม่ถูกเก็บในแคชเด็ดขาด
-const VERSION = 'rental-20261121200318';
+const VERSION = 'rental-20261126231518';
 const SHELL = [
   './',
   'index.html',
@@ -32,8 +32,9 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if(/supabase\.(co|in)$/.test(url.hostname)) return;   // ข้อมูลจริง: ไปที่เซิร์ฟเวอร์เสมอ
   if(url.origin === location.origin){
-    // ไฟล์ของแอป: เอาเวอร์ชันล่าสุดจากเน็ตก่อน ถ้าออฟไลน์ใช้ที่เก็บไว้
-    e.respondWith(fetch(req).then(r => put(req, r)).catch(() =>
+    // ไฟล์ของแอป: เอาเวอร์ชันล่าสุดจากเน็ตก่อน (ถามเซิร์ฟเวอร์ทุกครั้ง ไม่ใช้แคชเบราว์เซอร์ 10 นาที) ถ้าออฟไลน์ใช้ที่เก็บไว้
+    const fresh = req.mode === 'navigate' ? new Request(req.url, {cache: 'no-cache', credentials: 'same-origin'}) : new Request(req, {cache: 'no-cache'});
+    e.respondWith(fetch(fresh).then(r => put(req, r)).catch(() =>
       caches.match(req, {ignoreSearch: true}).then(r => r || (req.mode === 'navigate' ? caches.match('index.html') : Response.error()))));
     return;
   }
