@@ -560,12 +560,17 @@ function bahtText(num){
 const IS_GAS = !!(window.google && google.script && google.script.run);
 const SUPA_CFG = window.SUPABASE_CONFIG || null;          // มีไฟล์ config.js = เวอร์ชัน GitHub + Supabase
 const SELF_HOST = !!(SUPA_CFG && SUPA_CFG.selfHost);      // ระบบส่วนตัวบน GitHub + Supabase ของลูกค้าเอง (ไม่มีหน้าแอดมิน/วันหมดอายุ)
+const OWNER_EMAIL = (SUPA_CFG && SUPA_CFG.ownerEmail) || 'owner@rental.app';   // ระบบส่วนตัว: บัญชีเดียวของเจ้าของหอ เข้าระบบด้วย PIN 6 หลัก (PIN = รหัสผ่านของบัญชีนี้)
 const APP_VERSION = '1.1.0';
 const VENDOR = {name:'Buildsflowth', line:'@287yhkhu', url:'https://line.me/R/ti/p/@287yhkhu'};
 const DEMO = !IS_GAS && /[?&]demo(=|&|$)/.test(location.search);   // ?demo = ทดลองใช้ (ข้อมูลตัวอย่างในเครื่อง ไม่ต้องล็อกอิน)
 const IS_SUPA = !IS_GAS && !DEMO && !!(SUPA_CFG && SUPA_CFG.url && SUPA_CFG.key);
 const LIVE = IS_GAS || IS_SUPA;                           // ใช้งานจริง (ไม่ใช่โหมดทดลอง)
 const HOSTED = !!window.DEMO_HOSTED;   // เว็บเดโมออนไลน์: ไม่มีการพิมพ์/ดาวน์โหลดไฟล์
+// จำนวนห้องสูงสุดต่อบัญชี: A สมาชิกออนไลน์ 20 · B Google Sheet 50 · C ระบบส่วนตัว 100 (ฐานข้อมูลก็ล็อกไว้ด้วย)
+const ROOM_LIMIT = IS_GAS ? 50 : SELF_HOST ? 100 : 20;
+// เก็บรูปมิเตอร์ย้อนหลัง (เดือน): A 12 เดือน (ลบที่เซิร์ฟเวอร์ทุกวัน) · C 24 เดือน (ลบตอนเปิดระบบ) · B เก็บใน Drive ของลูกค้า ไม่ลบ
+const PHOTO_KEEP_MONTHS = IS_GAS ? 0 : SELF_HOST ? 24 : 12;
 let PIN = '';
 try { PIN = sessionStorage.getItem('rent_pin') || ''; } catch(e){}
 
@@ -827,6 +832,28 @@ const Supa = (() => {
   }
   async function clearImage(key){ await need(); const old = (await getSettings())[key]; await putSettings({[key]:''}); await remove(old); return true; }
   function table(name){ if(!TBL[name]) throw new Error('ไม่รู้จักตาราง: ' + name); return TBL[name]; }
+  // ระบบส่วนตัว: ลบรูปมิเตอร์ที่เก่ากว่าที่กำหนด (ตรวจวันละครั้งตอนเปิดระบบ) แล้วล้างลิงก์รูปในบิล
+  async function cleanupOldPhotos(months){
+    try {
+      const k = 'rent_photo_gc_' + uid;
+      if(Date.now() - Number(localStorage.getItem(k) || 0) < 864e5) return;
+      const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - months);
+      const dir = uid + '/meter', old = [];
+      for(let off = 0; ; off += 100){
+        const {data, error} = await client().storage.from('files').list(dir, {limit:100, offset:off, sortBy:{column:'created_at', order:'asc'}});
+        if(error || !data || !data.length) break;
+        const fresh = data.findIndex(f => !f.created_at || new Date(f.created_at) >= cutoff);
+        data.slice(0, fresh < 0 ? data.length : fresh).forEach(f => old.push(dir + '/' + f.name));
+        if(fresh > -1 || data.length < 100) break;
+      }
+      for(let i = 0; i < old.length; i += 100){
+        const part = old.slice(i, i + 100);
+        chk(await client().storage.from('files').remove(part));
+        for(const col of ['water_photo', 'elec_photo']) chk(await client().from('bills').update({[col]:''}).in(col, part));
+      }
+      localStorage.setItem(k, String(Date.now()));
+    } catch(e){}
+  }
   return {
     get email(){ return email; },
     async signIn(mail, pass){ const r = await client().auth.signInWithPassword({email:mail, password:pass}); if(r.error) throw r.error; await session(); return true; },
@@ -834,6 +861,13 @@ const Supa = (() => {
     async changePassword(pass){ chk(await client().auth.updateUser({password:pass})); return true; },
     async apiGetAll(){
       if(!(await session())) return {locked:true, systemName:''};
+      if(SELF_HOST){
+        if(PHOTO_KEEP_MONTHS) await cleanupOldPhotos(PHOTO_KEEP_MONTHS);
+        const [s, rooms, tenants, bills, expenses, repairs] = await Promise.all([getSettings(), all('rooms'), all('tenants'), all('bills'), all('expenses'), all('repairs')]);
+        const p = pub(s);
+        [p.qrImage, p.signImage] = await Promise.all([download(s.qrPath), download(s.signPath)]);
+        return {settings:p, rooms, tenants, bills, expenses, repairs, account:null, contact:''};
+      }
       const [prof, cfg] = await Promise.all([
         client().from('profiles').select('*').maybeSingle(),
         client().from('app_config').select('key,value')
@@ -848,6 +882,7 @@ const Supa = (() => {
       [p.qrImage, p.signImage] = await Promise.all([download(s.qrPath), download(s.signPath)]);
       return {settings:p, rooms, tenants, bills, expenses, repairs, account, contact};
     },
+    // @admin-begin (ตัดออกจากชุดขายระบบส่วนตัว)
     async admin(action, data){
       await need();
       const {data:res, error} = await client().functions.invoke('admin-users', {body:Object.assign({action}, data || {})});
@@ -859,6 +894,7 @@ const Supa = (() => {
       if(res && res.error) throw new Error(res.error);
       return res;
     },
+    // @admin-end
     async apiSave(pin, name, obj){
       await need(); const t = table(name);
       obj = Object.assign({}, obj); if(!obj.id) obj.id = newId();
@@ -1496,6 +1532,7 @@ VIEWS.rooms = () => {
   return `<div class="toolbar">
     <div class="search">${ic('search')}<input placeholder="ค้นหาเลขห้อง / ประเภท / ผู้เช่า" value="${esc(RF.q)}" oninput="RF.q=this.value;renderRoomList()"></div>
     <div class="grow"></div>
+    <span class="sm muted" title="จำนวนห้องสูงสุดของแพ็กเกจ">${DB.rooms.length} / ${ROOM_LIMIT} ห้อง</span>
     <button class="btn" onclick="openBulkRooms()">${ic('plus')}เพิ่มหลายห้อง</button>
     <button class="btn btn-primary" onclick="openRoomForm()">${ic('plus')}เพิ่มห้อง</button>
   </div>
@@ -1540,6 +1577,7 @@ async function saveRoom(id){
   const o = formObj($('#roomForm'));
   if(!o.number) return toast('กรุณากรอกเลขห้อง', 'bad');
   if(DB.rooms.some(r => r.number === o.number && r.id !== id)) return toast('เลขห้องนี้มีอยู่แล้ว', 'bad');
+  if(!id && DB.rooms.length >= ROOM_LIMIT) return toast(roomLimitMsg(), 'bad');
   if(id) o.id = id;
   $('#roomSave').disabled = true;
   try { await saveRec('Rooms', o); toast('บันทึกห้องแล้ว'); closeModal(); render(); } catch(e){ $('#roomSave').disabled = false; }
@@ -1549,6 +1587,10 @@ async function deleteRoom(id){
   const r = roomById(id);
   if(!await confirmBox(`ลบห้อง <b>${esc(r.number)}</b>? (ประวัติบิลเดิมยังคงอยู่)`, {danger:true, yes:'ลบห้อง'})) return;
   try { await delRec('Rooms', id); toast('ลบห้องแล้ว'); render(); } catch(e){}
+}
+function roomLimitMsg(){
+  const left = Math.max(0, ROOM_LIMIT - DB.rooms.length);
+  return `แพ็กเกจนี้ใช้ได้สูงสุด ${ROOM_LIMIT} ห้อง (มีแล้ว ${DB.rooms.length} ห้อง${left ? ' เพิ่มได้อีก ' + left + ' ห้อง' : ''})`;
 }
 function openBulkRooms(){
   openModal({title:'เพิ่มห้องพักทีละหลายห้อง',
@@ -1563,10 +1605,11 @@ function openBulkRooms(){
 async function saveBulkRooms(){
   const o = formObj($('#bulkForm')), a = parseInt(o.from), b = parseInt(o.to);
   if(isNaN(a) || isNaN(b) || b < a) return toast('ช่วงเลขห้องไม่ถูกต้อง', 'bad');
-  if(b - a > 100) return toast('สร้างได้ครั้งละไม่เกิน 100 ห้อง', 'bad');
+  if(b - a + 1 > ROOM_LIMIT) return toast(roomLimitMsg(), 'bad');
   const exist = new Set(DB.rooms.map(r => r.number)), list = [];
   for(let i=a;i<=b;i++){ if(!exist.has(String(i))) list.push({number:String(i), floor:o.floor, type:o.type, price:o.price, status:'vacant', note:''}); }
   if(!list.length) return toast('ห้องทั้งหมดมีอยู่แล้ว', 'bad');
+  if(DB.rooms.length + list.length > ROOM_LIMIT) return toast(roomLimitMsg(), 'bad');
   $('#bulkSave').disabled = true;
   try { const rs = await call('SaveMany', 'Rooms', list); rs.forEach(r => upsertLocal('Rooms', r)); toast(`เพิ่ม ${rs.length} ห้องเรียบร้อย`); closeModal(); render(); }
   catch(e){ $('#bulkSave').disabled = false; }
@@ -2000,7 +2043,9 @@ VIEWS.settings = () => { const s = S(); return `<div class="stack">
     </form></div>
   <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary" id="setSave" onclick="saveSystem()">${ic('check')}บันทึกการตั้งค่า</button></div>
   <div class="grid g2" style="align-items:start">
-    ${IS_SUPA ? `<div class="card"><h3>${ic('lock')}บัญชีผู้ใช้</h3>
+    ${SELF_HOST ? `<div class="card"><h3>${ic('lock')}รหัส PIN เข้าระบบ</h3>
+      <p class="sm muted" style="margin-top:0">เข้าระบบด้วย PIN 6 หลัก ระบบส่วนตัวของคุณ ไม่มีวันหมดอายุ</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="changePassword()">เปลี่ยน PIN</button><button class="btn btn-danger" onclick="logout()">ออกจากระบบ</button></div></div>` : IS_SUPA ? `<div class="card"><h3>${ic('lock')}บัญชีผู้ใช้</h3>
       <p class="sm muted" style="margin-top:0">เข้าสู่ระบบด้วย <b>${esc(s.userEmail || Supa.email)}</b> ข้อมูลของบัญชีนี้แยกจากบัญชีอื่นทั้งหมด
         ${SELF_HOST ? '<br>ระบบส่วนตัวของคุณ ไม่มีวันหมดอายุ' : DB.account ? '<br>' + (DB.account.is_admin ? 'สถานะ: <b>ผู้ดูแลระบบ</b>' : DB.account.expires_at ? 'ใช้งานได้ถึง <b>' + dateTH(DB.account.expires_at) + '</b>' : 'ไม่มีวันหมดอายุ') : ''}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="changePassword()">เปลี่ยนรหัสผ่าน</button><button class="btn btn-danger" onclick="logout()">ออกจากระบบ</button></div></div>` : `<div class="card"><h3>${ic('lock')}รหัส PIN เข้าระบบ</h3>
@@ -2013,6 +2058,8 @@ VIEWS.settings = () => { const s = S(); return `<div class="stack">
     ${LIVE ? `<div class="card"><h3>${ic('settings')}เกี่ยวกับระบบ</h3>
       <p class="sm muted" style="margin-top:0">ระบบจัดการห้องเช่า เวอร์ชัน <b>${APP_VERSION}</b><br>
         รุ่น: <b>${IS_GAS ? 'Google Sheet (ซื้อขาด)' : SELF_HOST ? 'ระบบส่วนตัว GitHub + Supabase' : 'สมาชิกออนไลน์'}</b><br>
+        จำนวนห้องสูงสุด: <b>${ROOM_LIMIT} ห้อง</b> (ใช้แล้ว ${DB.rooms.length} ห้อง)<br>
+        รูปมิเตอร์: ${PHOTO_KEEP_MONTHS ? 'เก็บย้อนหลัง <b>' + (PHOTO_KEEP_MONTHS >= 24 ? PHOTO_KEEP_MONTHS / 12 + ' ปี' : PHOTO_KEEP_MONTHS + ' เดือน') + '</b> แล้วลบอัตโนมัติ' : 'เก็บใน Google Drive ของคุณ ไม่ลบอัตโนมัติ'}<br>
         พัฒนาโดย ${VENDOR.name} · LINE ${VENDOR.line}</p>
       <a class="btn" href="${VENDOR.url}" target="_blank" rel="noopener">${ic('phone')}ติดต่อผู้พัฒนา / แจ้งปัญหา</a></div>` : ''}
   </div></div>`; };
@@ -2072,8 +2119,12 @@ let LOCK_HTML = '';
 function showLock(name){
   if(!LOCK_HTML) LOCK_HTML = $('#lock .card').innerHTML;
   if($('#lock .card').dataset.mode === 'expired'){ $('#lock .card').innerHTML = LOCK_HTML; $('#lock .card').dataset.mode = ''; }
-  if(IS_SUPA && !$('#loginEmail')){
-    if(SELF_HOST) $('#lock .btn-primary').insertAdjacentHTML('afterend', '<div class="muted sm" style="margin-top:10px">ลืมรหัสผ่าน: ติดต่อผู้ติดตั้งระบบ หรือตั้งใหม่ที่ Supabase → Authentication → Users</div>');
+  if(SELF_HOST && !$('#lock .pin-hint')){
+    $('#pinInput').maxLength = 6; $('#pinInput').autocomplete = 'current-password';
+    $('#lock .muted').textContent = 'ใส่ PIN 6 หลักเพื่อเข้าระบบ';
+    $('#lock .btn-primary').insertAdjacentHTML('afterend', '<div class="muted sm pin-hint" style="margin-top:10px">ลืม PIN: ติดต่อผู้ติดตั้งระบบ</div>');
+  }
+  if(IS_SUPA && !SELF_HOST && !$('#loginEmail')){
     ($('#pinInput').closest('.pw-wrap') || $('#pinInput')).outerHTML = `<input id="loginEmail" type="email" autocomplete="username" placeholder="อีเมล" style="letter-spacing:normal;font-size:16px;text-align:left;margin:14px 0 8px">
       <input id="loginPass" type="password" autocomplete="current-password" placeholder="รหัสผ่าน" style="letter-spacing:normal;font-size:16px;text-align:left;margin:0 0 14px" onkeydown="if(event.key==='Enter')unlock()">`;
     $('#lock .muted').textContent = 'เข้าสู่ระบบด้วยอีเมลและรหัสผ่าน';
@@ -2082,9 +2133,18 @@ function showLock(name){
       <div class="muted sm" style="margin-top:6px">ไม่ต้องใช้รหัส ข้อมูลตัวอย่างเก็บในเครื่องนี้เท่านั้น</div>`);
   }
   $('#lockName').textContent = name || S().systemName || 'ระบบจัดการห้องเช่า'; $('#lock').classList.add('show'); $('#splash').classList.add('hide');
-  setTimeout(() => (IS_SUPA ? $('#loginEmail') : $('#pinInput')).focus(), 50);
+  setTimeout(() => (IS_SUPA && !SELF_HOST ? $('#loginEmail') : $('#pinInput')).focus(), 50);
 }
 async function unlock(){
+  if(SELF_HOST){
+    const pin = $('#pinInput').value.trim();
+    if(!/^\d{6}$/.test(pin)) return toast('กรุณาใส่ PIN ตัวเลข 6 หลัก', 'bad');
+    busy(true);
+    try { await Supa.signIn(OWNER_EMAIL, pin); $('#pinInput').value = ''; }
+    catch(e){ $('#pinInput').value = ''; toast(/invalid/i.test((e && e.message) || '') ? 'PIN ไม่ถูกต้อง' : /rate|many/i.test((e && e.message) || '') ? 'ใส่ PIN ผิดหลายครั้ง กรุณารอสักครู่แล้วลองใหม่' : 'เข้าสู่ระบบไม่สำเร็จ: ' + ((e && e.message) || e), 'bad'); return; }
+    finally { busy(false); }
+    return load();
+  }
   if(IS_SUPA){
     const mail = $('#loginEmail').value.trim(), pass = $('#loginPass').value;
     if(!mail || !pass) return toast('กรุณากรอกอีเมลและรหัสผ่าน', 'bad');
@@ -2097,15 +2157,19 @@ async function unlock(){
   PIN = $('#pinInput').value.trim(); try { sessionStorage.setItem('rent_pin', PIN); } catch(e){} $('#pinInput').value = ''; load();
 }
 function changePassword(){
+  if(SELF_HOST) return openModal({title:'เปลี่ยน PIN', size:'sm', body:`<form id="pwForm" class="form-grid" onsubmit="return false">${field('PIN ใหม่ (ตัวเลข 6 หลัก)', '<input name="p1" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password">', 'full')}${field('ยืนยัน PIN', '<input name="p2" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password">', 'full')}</form>`,
+    foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="savePassword()">บันทึก</button>`});
   openModal({title:'เปลี่ยนรหัสผ่าน', size:'sm', body:`<form id="pwForm" class="form-grid" onsubmit="return false">${field('รหัสผ่านใหม่ (อย่างน้อย 8 ตัว)', '<input name="p1" type="password" autocomplete="new-password">', 'full')}${field('ยืนยันรหัสผ่าน', '<input name="p2" type="password" autocomplete="new-password">', 'full')}</form>`,
     foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="savePassword()">บันทึก</button>`});
 }
 async function savePassword(){
   const o = formObj($('#pwForm'));
-  if(String(o.p1 || '').length < 8) return toast('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร', 'bad');
-  if(o.p1 !== o.p2) return toast('รหัสผ่านไม่ตรงกัน', 'bad');
+  if(SELF_HOST && !/^\d{6}$/.test(o.p1 || '')) return toast('PIN ต้องเป็นตัวเลข 6 หลัก', 'bad');
+  if(SELF_HOST && /^(\d)\1{5}$|^(012345|123456|234567|345678|456789|987654|654321)$/.test(o.p1)) return toast('PIN นี้เดาง่ายเกินไป กรุณาตั้งใหม่', 'bad');
+  if(!SELF_HOST && String(o.p1 || '').length < 8) return toast('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร', 'bad');
+  if(o.p1 !== o.p2) return toast(SELF_HOST ? 'PIN ไม่ตรงกัน' : 'รหัสผ่านไม่ตรงกัน', 'bad');
   busy(true);
-  try { await Supa.changePassword(o.p1); toast('เปลี่ยนรหัสผ่านแล้ว'); closeModal(); }
+  try { await Supa.changePassword(o.p1); toast(SELF_HOST ? 'เปลี่ยน PIN แล้ว' : 'เปลี่ยนรหัสผ่านแล้ว'); closeModal(); }
   catch(e){ toast('เปลี่ยนรหัสผ่านไม่สำเร็จ: ' + ((e && e.message) || e), 'bad'); }
   finally { busy(false); }
 }
@@ -2158,6 +2222,7 @@ function syncAccountUI(){
     bn.classList.remove('hide');
   } else bn.classList.add('hide');
 }
+// @admin-begin (หน้าจัดการลูกค้า: ตัดออกจากชุดขายระบบส่วนตัว)
 const addMonths = (d, m) => { const x = new Date(d + 'T00:00:00'); const day = x.getDate(); x.setMonth(x.getMonth() + m); if(x.getDate() !== day) x.setDate(0); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); };
 const addDays = (d, n2) => { const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + n2); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); };
 function genPassword(){
@@ -2315,6 +2380,7 @@ async function saveContact(){
   catch(e){ toast(e.message || String(e), 'bad'); }
   finally { $('#adContactBtn').disabled = false; }
 }
+// @admin-end
 async function reload(){ await load(true); toast('โหลดข้อมูลล่าสุดแล้ว'); }
 async function load(quiet){
   if(IS_SUPA && /ใส่/.test(SUPA_CFG.url + SUPA_CFG.key)){
