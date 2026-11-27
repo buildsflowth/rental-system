@@ -1,6 +1,6 @@
 // Service worker: ทำให้ติดตั้งเป็นแอปได้ และเปิดหน้าแอปได้เร็วขึ้น
 // ข้อมูลจริง (Supabase) ไม่ถูกเก็บในแคชเด็ดขาด
-const VERSION = 'rental-20261126231518';
+const VERSION = 'rental-20261127151224';
 const SHELL = [
   './',
   'index.html',
