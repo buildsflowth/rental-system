@@ -2280,7 +2280,7 @@ function renderAdminList(){
       <div class="avatar">${esc(initials(u.display_name || u.email))}</div>
       <div class="main"><div class="t">${esc(u.display_name || u.email)} <span class="badge ${s.cls}">${s.label}</span>${me ? ' <span class="badge b-info">คุณ</span>' : ''}</div>
         <div class="s">${esc(u.email)}${u.phone ? ' · <a href="tel:' + esc(u.phone.replace(/[^0-9+]/g, '')) + '">' + esc(u.phone) + '</a>' : ''}</div>
-        <div class="s">${u.is_admin ? 'บัญชีผู้ดูแล' : u.expires_at ? 'ใช้ได้ถึง ' + dateTH(u.expires_at) : 'ไม่มีวันหมดอายุ'} · ${u.rooms} ห้อง · เข้าใช้ล่าสุด ${u.last_sign_in_at ? dateTH(u.last_sign_in_at.slice(0, 10)) : 'ยังไม่เคย'}${u.note ? ' · ' + esc(u.note) : ''}</div></div>
+        <div class="s">${u.is_admin ? 'บัญชีผู้ดูแล' : u.expires_at ? 'ใช้ได้ถึง ' + dateTH(u.expires_at) : 'ไม่มีวันหมดอายุ'}${u.plan && !u.is_admin ? ' · ' + esc(u.plan) : ''} · ${u.rooms} ห้อง · เข้าใช้ล่าสุด ${u.last_sign_in_at ? dateTH(u.last_sign_in_at.slice(0, 10)) : 'ยังไม่เคย'}${u.note ? ' · ' + esc(u.note) : ''}</div></div>
       <div class="acts">${u.is_admin ? `<button class="btn btn-sm" onclick="openResetPw('${u.user_id}')">${ic('lock')}เปลี่ยนรหัส</button>` : `
         <button class="btn btn-sm btn-soft" onclick="openRenew('${u.user_id}')">${ic('calendar')}ต่ออายุ</button>
         <button class="btn-icon" title="แก้ไข" onclick="openCustomerForm('${u.user_id}')">${ic('edit')}</button>
@@ -2314,7 +2314,7 @@ async function saveCustomer(id){
   $('#cfSave').disabled = true;
   try {
     if(id) await call2(() => Supa.admin('update', {userId:id, displayName:o.displayName, phone:o.phone, note:o.note}));
-    else await call2(() => Supa.admin('create', {email:o.email, password:o.password, displayName:o.displayName, phone:o.phone, note:o.note, expiresAt:o.expiresAt}));
+    else await call2(() => Supa.admin('create', {email:o.email, password:o.password, displayName:o.displayName, phone:o.phone, note:o.note, expiresAt:o.expiresAt, plan:(PLANS.find(p => p[0] === o.plan) || [,''])[1]}));
     await loadAdmin();
     if(id){ toast('บันทึกแล้ว'); closeModal(); }
     else showCredentials(o.email, o.password, o.expiresAt);
@@ -2340,13 +2340,15 @@ function openRenew(id){
   const base = u.expires_at && u.expires_at >= todayStr() ? u.expires_at : todayStr();
   openModal({title:'ต่ออายุ · ' + (u.display_name || u.email), size:'sm',
     body:`<p class="sm muted" style="margin-top:0">ปัจจุบัน: ${u.expires_at ? 'ใช้ได้ถึง ' + dateTH(u.expires_at) : 'ไม่มีวันหมดอายุ'} — ต่อจาก ${dateTH(base)}</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${[['1','+1 เดือน'],['3','+3 เดือน'],['6','+6 เดือน'],['12','+1 ปี']].map(([m,l]) => `<button class="btn btn-sm" onclick="$('#rnDate').value=addMonths('${base}',${m})">${l}</button>`).join('')}</div>
-      ${field('ใช้ได้ถึงวันที่', `<input id="rnDate" type="date" value="${addMonths(base, 1)}"><div class="hint">เว้นว่าง = ไม่มีวันหมดอายุ</div>`)}`,
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${[['1','+1 เดือน'],['3','+3 เดือน'],['6','+6 เดือน'],['12','+1 ปี']].map(([m,l]) => `<button class="btn btn-sm" onclick="$('#rnDate').value=addMonths('${base}',${m});$('#rnDate').dataset.plan='ต่ออายุ ${l.slice(1)}';$('#rnDate').dataset.date=$('#rnDate').value">${l}</button>`).join('')}</div>
+      ${field('ใช้ได้ถึงวันที่', `<input id="rnDate" type="date" value="${addMonths(base, 1)}" data-plan="ต่ออายุ 1 เดือน" data-date="${addMonths(base, 1)}"><div class="hint">เว้นว่าง = ไม่มีวันหมดอายุ</div>`)}`,
     foot:`<button class="btn" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" id="rnSave" onclick="saveRenew('${id}')">${ic('check')}บันทึก</button>`});
 }
 async function saveRenew(id){
   $('#rnSave').disabled = true;
-  try { await call2(() => Supa.admin('update', {userId:id, expiresAt:$('#rnDate').value, active:true})); toast('ต่ออายุแล้ว'); closeModal(); await loadAdmin(); }
+  const d = $('#rnDate'), u = AD.users.find(x => x.user_id === id) || {};
+  const plan = d.dataset.plan && d.value === d.dataset.date ? d.dataset.plan : 'ต่ออายุ ถึง ' + (d.value ? dateTH(d.value) : 'ไม่มีวันหมดอายุ');
+  try { await call2(() => Supa.admin('update', {userId:id, expiresAt:d.value, active:true, plan, renewedFrom:u.expires_at || ''})); toast('ต่ออายุแล้ว'); closeModal(); await loadAdmin(); }
   catch(e){ toast(e.message || String(e), 'bad'); $('#rnSave').disabled = false; }
 }
 function openResetPw(id){
