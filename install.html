@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>วิธีติดตั้งแอปบนมือถือ · ระบบจัดการห้องเช่า</title>
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FBF7F1;--card:#fff;--ink:#3B2F25;--muted:#7A6A5B;--line:#EFE7DB;--brand:#8B6A4E;--soft:#F3EBDF;--warn:#FFF4E0;--warnInk:#8A5A00}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 'Noto Sans Thai',Tahoma,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;gap:14px;align-items:center;margin-bottom:8px}
+header img{width:56px;height:56px;border-radius:14px}
+h1{font-size:24px;margin:0;line-height:1.3}
+.sub{color:var(--muted);margin:4px 0 20px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
+.tabs a{text-decoration:none;color:var(--brand);background:var(--soft);padding:8px 14px;border-radius:999px;font-weight:600;font-size:15px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin:0 0 16px;break-inside:avoid}
+.card h2{margin:0 0 6px;font-size:19px;display:flex;align-items:center;gap:10px}
+.badge{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:var(--soft);font-size:18px}
+.card p{margin:4px 0 10px;color:var(--muted)}
+ol{margin:0;padding:0;list-style:none;counter-reset:s}
+li{counter-increment:s;display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+li:before{content:counter(s);flex:0 0 28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px;margin-top:1px}
+b{color:var(--brand)}
+.k{display:inline-block;border:1px solid var(--line);background:var(--soft);border-radius:6px;padding:0 6px;font-weight:600;color:var(--ink)}
+.warn{background:var(--warn);color:var(--warnInk);border-radius:12px;padding:12px 14px;margin:10px 0 0;font-size:15px}
+.faq dt{font-weight:700;margin-top:12px}
+.faq dd{margin:2px 0 0;color:var(--muted)}
+.btn{display:inline-block;background:var(--brand);color:#fff;text-decoration:none;padding:12px 20px;border-radius:12px;font-weight:600;margin-top:6px}
+footer{text-align:center;color:var(--muted);font-size:14px;margin-top:24px}
+@media print{body{background:#fff}.tabs,.btn{display:none}.wrap{padding:0}.card{border-color:#ddd}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1E1915;--card:#2A231D;--ink:#F3EBDF;--muted:#C2B3A3;--line:#3D342C;--soft:#3A3029;--warn:#3A2E14;--warnInk:#F2CF8A}}
+:root[data-theme="dark"]{--bg:#1E1915;--card:#2A231D;--ink:#F3EBDF;--muted:#C2B3A3;--line:#3D342C;--soft:#3A3029;--warn:#3A2E14;--warnInk:#F2CF8A}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="icons/icon-192.png" alt=""><div><h1>วิธีติดตั้งแอปบนมือถือ</h1></div></header>
+  <p class="sub">ระบบจัดการห้องเช่า ติดตั้งเป็นแอปได้ฟรี ไม่ต้องผ่าน App Store / Play Store ใช้เวลาไม่ถึง 1 นาที</p>
+
+  <nav class="tabs"><a href="#line">เปิดจาก LINE</a><a href="#android">Android</a><a href="#iphone">iPhone / iPad</a><a href="#pc">คอมพิวเตอร์</a><a href="#faq">คำถามที่พบบ่อย</a></nav>
+
+  <section class="card" id="line">
+    <h2><span class="badge">💬</span>ก่อนเริ่ม: ถ้าเปิดลิงก์จาก LINE</h2>
+    <p>หน้าเว็บที่เปิดในแอป LINE / Facebook ติดตั้งเป็นแอปไม่ได้ ต้องเปิดในเบราว์เซอร์ก่อน</p>
+    <ol>
+      <li><span>กดปุ่ม <span class="k">⋮</span> หรือไอคอนเข็มทิศ มุมขวาบน (หรือขวาล่าง)</span></li>
+      <li><span>เลือก <b>เปิดในเบราว์เซอร์</b> (Android จะเปิดด้วย Chrome · iPhone ให้เลือก Safari)</span></li>
+      <li><span>ทำตามขั้นตอนของเครื่องคุณด้านล่าง</span></li>
+    </ol>
+  </section>
+
+  <section class="card" id="android">
+    <h2><span class="badge">🤖</span>Android (Samsung, OPPO, vivo, Xiaomi ฯลฯ)</h2>
+    <p>ใช้แอป <b>Chrome</b></p>
+    <ol>
+      <li><span>เปิดลิงก์ระบบของคุณใน Chrome</span></li>
+      <li><span>หน้าเข้าสู่ระบบ กดปุ่ม <b>ติดตั้งแอปลงเครื่อง</b> (ถ้าไม่เห็นปุ่ม ให้กด <span class="k">⋮</span> มุมขวาบนของ Chrome)</span></li>
+      <li><span>เลือก <b>ติดตั้งแอป</b> หรือ <b>เพิ่มลงในหน้าจอหลัก</b></span></li>
+      <li><span>กด <b>ติดตั้ง</b> รอสักครู่ จะมีไอคอน "ห้องเช่า" บนหน้าจอ</span></li>
+      <li><span>เปิดแอปจากไอคอน แล้วเข้าสู่ระบบ 1 ครั้ง ครั้งต่อไปเปิดใช้ได้เลย</span></li>
+    </ol>
+  </section>
+
+  <section class="card" id="iphone">
+    <h2><span class="badge">🍎</span>iPhone / iPad</h2>
+    <p>ใช้แอป <b>Safari</b> (iOS 16.4 ขึ้นไป ใช้ Chrome ได้ด้วย)</p>
+    <ol>
+      <li><span>เปิดลิงก์ระบบของคุณใน Safari</span></li>
+      <li><span>กดปุ่ม <b>แชร์</b> <span class="k">⬆︎</span> ด้านล่างจอ (iPad: มุมขวาบน)</span></li>
+      <li><span>เลื่อนลง เลือก <b>เพิ่มไปยังหน้าจอโฮม</b> <span class="k">＋</span></span></li>
+      <li><span>เปิดสวิตช์ <b>เปิดเป็นเว็บแอป</b> (ถ้ามี) แล้วกด <b>เพิ่ม</b> มุมขวาบน</span></li>
+      <li><span>เปิดแอปจากไอคอนบนหน้าจอ แล้วเข้าสู่ระบบ 1 ครั้ง</span></li>
+    </ol>
+    <div class="warn">ไม่เห็นเมนู "เพิ่มไปยังหน้าจอโฮม": กด <b>แก้ไขการทำงาน</b> ท้ายรายการ แล้วเพิ่มเมนูนี้เข้ามา</div>
+  </section>
+
+  <section class="card" id="pc">
+    <h2><span class="badge">💻</span>คอมพิวเตอร์ (Windows / Mac)</h2>
+    <p>ใช้ <b>Chrome</b> หรือ <b>Microsoft Edge</b></p>
+    <ol>
+      <li><span>เปิดลิงก์ระบบของคุณ</span></li>
+      <li><span>กดไอคอน <b>ติดตั้ง</b> <span class="k">⊕</span> ทางขวาของช่องที่อยู่เว็บ หรือปุ่ม <b>ติดตั้งแอปลงเครื่อง</b> ในหน้าเข้าสู่ระบบ</span></li>
+      <li><span>กด <b>ติดตั้ง</b> แอปจะเปิดเป็นหน้าต่างของตัวเอง และมีไอคอนบนเดสก์ท็อป/ทาสก์บาร์</span></li>
+    </ol>
+  </section>
+
+  <section class="card" id="faq">
+    <h2><span class="badge">❓</span>คำถามที่พบบ่อย</h2>
+    <dl class="faq">
+      <dt>ต้องเสียเงิน หรือโหลดจาก Store ไหม</dt><dd>ไม่ต้อง ติดตั้งจากหน้าเว็บได้ฟรี ไม่กินพื้นที่เครื่อง</dd>
+      <dt>ติดตั้งแล้วข้อมูลเดิมหายไหม</dt><dd>ไม่หาย ข้อมูลเก็บบนระบบออนไลน์ ใช้ได้หลายเครื่องพร้อมกัน เห็นข้อมูลเดียวกัน</dd>
+      <dt>ต้องอัปเดตแอปเองไหม</dt><dd>ไม่ต้อง แอปอัปเดตอัตโนมัติเมื่อเปิดใช้งาน ถ้าเห็นข้อความ "มีเวอร์ชันใหม่" ให้กดรีเฟรช</dd>
+      <dt>ลบแอปได้ไหม</dt><dd>ได้ กดค้างที่ไอคอนแล้วลบเหมือนแอปทั่วไป ข้อมูลในระบบไม่หาย ติดตั้งใหม่เมื่อไรก็ได้</dd>
+      <dt>ลิงก์ระบบของฉันคืออะไร</dt><dd>แพ็กเกจสมาชิก: https://buildsflowth.github.io/rental-system/ · แพ็กเกจซื้อขาด/ระบบส่วนตัว: ใช้ลิงก์ที่ได้ตอนติดตั้ง</dd>
+      <dt>ลืมรหัสผ่าน / เข้าไม่ได้</dt><dd>ทักแชท LINE OA @287yhkhu พิมพ์ "ลืมรหัส" ข้อมูลอยู่ครบไม่หาย</dd>
+    </dl>
+    <a class="btn" href="./">เปิดระบบ</a>
+  </section>
+
+  <footer>ระบบจัดการห้องเช่า · LINE OA @287yhkhu</footer>
+</div>
+</body>
+</html>
